@@ -1,0 +1,271 @@
+{
+  "dataset_id": "smart-librarian-demo-v1",
+  "synthetic_record": true,
+  "owners": [
+    {
+      "owner_id": "DEMO-OWNER-001",
+      "name": "Synthetic Sales Steward",
+      "email": "sales-steward@synthetic.example",
+      "status": "active"
+    }
+  ],
+  "users": [
+    {
+      "user_id": "DEMO-USER-GLOBAL",
+      "name": "Synthetic Global Analyst",
+      "allowed_market_ids": [
+        "DE",
+        "FI",
+        "FR"
+      ]
+    },
+    {
+      "user_id": "DEMO-USER-FI",
+      "name": "Synthetic Finland Analyst",
+      "allowed_market_ids": [
+        "FI"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric_id": "DEMO-NET-SALES",
+      "name": "Net Sales",
+      "aliases": [
+        "net revenue",
+        "net sales"
+      ],
+      "approval_status": "approved",
+      "unit": "EUR",
+      "operator": "sum",
+      "column": "net_sales_eur",
+      "owner_id": "DEMO-OWNER-001",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-FORECAST",
+      "name": "Sales Forecast",
+      "aliases": [
+        "forecast",
+        "sales forecast"
+      ],
+      "approval_status": "approved",
+      "unit": "EUR",
+      "operator": "sum",
+      "column": "forecast_eur",
+      "owner_id": "DEMO-OWNER-001",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-VARIANCE-PCT",
+      "name": "Sales vs Forecast %",
+      "aliases": [
+        "forecast variance",
+        "sales variance percent"
+      ],
+      "approval_status": "approved",
+      "unit": "percent",
+      "operator": "percent_difference_of_aggregates",
+      "actual_metric_id": "DEMO-NET-SALES",
+      "baseline_metric_id": "DEMO-FORECAST",
+      "definition": "100 * (SUM(net_sales_eur) - SUM(forecast_eur)) / SUM(forecast_eur)",
+      "zero_denominator": "null",
+      "owner_id": "DEMO-OWNER-001",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-GROSS-SALES",
+      "name": "Gross Sales",
+      "aliases": [
+        "gross sales"
+      ],
+      "approval_status": "draft",
+      "unit": "EUR",
+      "operator": null,
+      "column": null,
+      "unsupported_reason": "No gross-sales source column or approved calculation.",
+      "owner_id": "DEMO-OWNER-001",
+      "synthetic_record": true
+    }
+  ],
+  "models": [
+    {
+      "model_id": "DEMO-MODEL-SALES",
+      "name": "Synthetic Monthly Pharma Sales",
+      "contract_version": "1.0.0",
+      "owner_id": "DEMO-OWNER-001",
+      "endorsement": "certified",
+      "certification_is_simulated": true,
+      "schema": {
+        "products": {
+          "product_id": "TEXT",
+          "product_name": "TEXT"
+        },
+        "markets": {
+          "market_id": "TEXT",
+          "market_name": "TEXT",
+          "currency": "TEXT"
+        },
+        "calendar": {
+          "month": "TEXT",
+          "year": "INTEGER",
+          "month_number": "INTEGER"
+        },
+        "sales_monthly": {
+          "product_id": "TEXT",
+          "market_id": "TEXT",
+          "month": "TEXT",
+          "net_sales_eur": "INTEGER",
+          "forecast_eur": "INTEGER",
+          "value_type": "TEXT"
+        }
+      },
+      "primary_keys": {
+        "products": [
+          "product_id"
+        ],
+        "markets": [
+          "market_id"
+        ],
+        "calendar": [
+          "month"
+        ],
+        "sales_monthly": [
+          "product_id",
+          "market_id",
+          "month"
+        ]
+      },
+      "relationships": [
+        {
+          "from_table": "sales_monthly",
+          "from_column": "product_id",
+          "to_table": "products",
+          "to_column": "product_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "sales_monthly",
+          "from_column": "market_id",
+          "to_table": "markets",
+          "to_column": "market_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "sales_monthly",
+          "from_column": "month",
+          "to_table": "calendar",
+          "to_column": "month",
+          "cardinality": "many_to_one"
+        }
+      ],
+      "fact_table": "sales_monthly",
+      "grain": [
+        "product_id",
+        "market_id",
+        "month"
+      ],
+      "supported_grains": [
+        "month"
+      ],
+      "time_column": "month",
+      "time_semantics": "Calendar month start, no intraday timestamps.",
+      "coverage": {
+        "product_ids": [
+          "DEMO-P-NUB",
+          "DEMO-P-KER"
+        ],
+        "market_ids": [
+          "DE",
+          "FI",
+          "FR"
+        ],
+        "months": [
+          "2026-01-01",
+          "2026-02-01",
+          "2026-03-01",
+          "2026-04-01",
+          "2026-05-01",
+          "2026-06-01",
+          "2026-07-01",
+          "2026-08-01",
+          "2026-09-01"
+        ]
+      },
+      "supported_metric_ids": [
+        "DEMO-NET-SALES",
+        "DEMO-FORECAST",
+        "DEMO-VARIANCE-PCT"
+      ],
+      "required_row_filter": {
+        "value_type": "synthetic_actual"
+      },
+      "amount_semantics": "Integer EUR; no currency conversion; all values fictional.",
+      "forecast_semantics": "One fictional forecast paired with each actual-like row.",
+      "snapshot_as_of": "2026-11-06T00:00:00Z",
+      "last_successful_refresh_at": "2026-11-05T12:00:00Z",
+      "refresh_status": "healthy",
+      "refresh_is_simulated": true
+    }
+  ],
+  "reports": [
+    {
+      "asset_id": "DEMO-REPORT-NUB-DE",
+      "name": "Nubeqa Germany Monthly Net Sales",
+      "model_id": "DEMO-MODEL-SALES",
+      "owner_id": "DEMO-OWNER-001",
+      "metric_ids": [
+        "DEMO-NET-SALES"
+      ],
+      "coverage": {
+        "product_ids": [
+          "DEMO-P-NUB"
+        ],
+        "market_ids": [
+          "DE"
+        ],
+        "months": [
+          "2026-01-01",
+          "2026-02-01",
+          "2026-03-01",
+          "2026-04-01",
+          "2026-05-01",
+          "2026-06-01",
+          "2026-07-01",
+          "2026-08-01",
+          "2026-09-01"
+        ]
+      },
+      "grain": "month",
+      "endorsement": "certified",
+      "lifecycle_status": "active",
+      "monthly_views": 42,
+      "usage_is_simulated": true,
+      "destination": {
+        "kind": "local_preview_reference",
+        "route": null,
+        "implemented": false,
+        "mock": true
+      }
+    }
+  ],
+  "lineage": [
+    {
+      "source_id": "DEMO-MODEL-SALES",
+      "target_id": "DEMO-REPORT-NUB-DE",
+      "relationship": "model_to_report",
+      "synthetic_record": true
+    }
+  ],
+  "policy": {
+    "scope": "Synthetic demo only; not Bayer policy or production authorization.",
+    "default_access": "deny",
+    "access_rule": "All requested markets must be listed in the selected user's allowed_market_ids.",
+    "metric_rule": "Every requested metric must be approved and supported by the model.",
+    "reuse_rule": "Exact metric, product, market, month and grain coverage required.",
+    "scope_rule": "Never silently broaden or narrow the confirmed request.",
+    "change_rule": "Extension/new-build requires explicit approval bound to specification hash.",
+    "uncertainty_rule": "Unresolved intent or missing trust evidence requires clarification/review.",
+    "notes": "Contract describes intended application behavior; no authorization engine is implemented."
+  }
+}

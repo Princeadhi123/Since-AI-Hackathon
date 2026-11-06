@@ -1,0 +1,52 @@
+{
+  "dataset_id": "smart-librarian-demo-v1",
+  "version": "1.0.0",
+  "synthetic_record": true,
+  "tables": {
+    "products": {
+      "rows": 2,
+      "columns": {
+        "product_id": "TEXT",
+        "product_name": "TEXT"
+      }
+    },
+    "markets": {
+      "rows": 3,
+      "columns": {
+        "market_id": "TEXT",
+        "market_name": "TEXT",
+        "currency": "TEXT"
+      }
+    },
+    "calendar": {
+      "rows": 9,
+      "columns": {
+        "month": "TEXT",
+        "year": "INTEGER",
+        "month_number": "INTEGER"
+      }
+    },
+    "sales_monthly": {
+      "rows": 54,
+      "columns": {
+        "product_id": "TEXT",
+        "market_id": "TEXT",
+        "month": "TEXT",
+        "net_sales_eur": "INTEGER",
+        "forecast_eur": "INTEGER",
+        "value_type": "TEXT"
+      }
+    }
+  },
+  "files": {
+    "approval_events.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "audit_events.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "calendar.csv": "4ad83f9b585bccd16cd2e9407d5855ecb917282fc0c6d629f0f3bd008c14817b",
+    "catalog.json": "f8b8c88468b04ee58193c00b8fb01667c8d36a8f19b75622e1edd6fe81823c4a",
+    "demo.sqlite": "be6d3d393aeba108cbdeb95a3a811e0e845c33d7dc361cc7944dacc55fb88511",
+    "markets.csv": "9c7d7ca2babeca7b6d4eca5cdf98e5cde82f1f6b586e90cbb1c7328c353cf06d",
+    "products.csv": "b6d8f4657ae7a17c7c1d5fa1030b956484737e8214d2e3d8e0bbdd207f274bb0",
+    "provenance.json": "cb77babf2af01c177672a53b918a7597fba45b2cb3bbe1937e7ecd01e5f0e9a9",
+    "sales_monthly.csv": "fac8ebfed32f8a76d394a7523b90f063996226418c4404550d06dd8320a2f27c"
+  }
+}

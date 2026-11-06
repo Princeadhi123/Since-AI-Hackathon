@@ -1,0 +1,9 @@
+{
+  "classification": "Entirely synthetic, author-created demo extension.",
+  "relationship_to_organizer_pack": "Independent fixture; no organizer records modified or reclassified.",
+  "product_names": "Public-context names only; every financial and governance value is invented.",
+  "generator": "create_demo_data.py",
+  "version": "1.0.0",
+  "generator_sha256": "55727e97cca6014e2ee084de008b71945beba8a2c83371f464e32cfa990a90ef",
+  "warning": "Not real Bayer sales, permissions, approvals, certification or usage."
+}

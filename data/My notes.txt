@@ -1,0 +1,16 @@
+semantic models to use for curating this.
+Catalog to fulfill the user intent, and the evidence is in place.
+callback loop for the intent.
+
+what is spec ---
+depends on the software stack to be used.
+
+Tableu, Power BI - semantic model - foltering the raw data and columns needed, table relations to find out.
+
+AI might or might not be needed at final spec.
+Synthetic dataset.
+
+manufacturing and medical domain can be considered. think creative in this direction. Quality control, supply chain logistics, HR and Finance and things
+and they all have their KPIs to work on. (select what can be considered)
+
+user perspective - is needed

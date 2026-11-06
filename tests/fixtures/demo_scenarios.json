@@ -1,0 +1,109 @@
+{
+  "purpose": "Acceptance fixtures only. Do not expose expected outcomes to the agent or retrieval catalog.",
+  "dataset_id": "smart-librarian-demo-v1",
+  "synthetic_record": true,
+  "cases": [
+    {
+      "case_id": "reuse",
+      "request_text": "Show monthly Nubeqa Net Sales in Germany from January through March 2026.",
+      "user_id": "DEMO-USER-GLOBAL",
+      "confirmed_intent": {
+        "product_ids": ["DEMO-P-NUB"],
+        "market_ids": ["DE"],
+        "metric_ids": ["DEMO-NET-SALES"],
+        "months": ["2026-01-01", "2026-02-01", "2026-03-01"],
+        "grain": "month"
+      },
+      "expected": {
+        "outcome": "REUSE",
+        "asset_id": "DEMO-REPORT-NUB-DE",
+        "net_sales_eur": [107000, 109000, 111000],
+        "total_net_sales_eur": 327000
+      }
+    },
+    {
+      "case_id": "extend",
+      "request_text": "Add Sales Forecast alongside monthly Nubeqa Net Sales in Germany for January through March 2026.",
+      "user_id": "DEMO-USER-GLOBAL",
+      "confirmed_intent": {
+        "product_ids": ["DEMO-P-NUB"],
+        "market_ids": ["DE"],
+        "metric_ids": ["DEMO-NET-SALES", "DEMO-FORECAST"],
+        "months": ["2026-01-01", "2026-02-01", "2026-03-01"],
+        "grain": "month"
+      },
+      "expected": {
+        "outcome": "PROPOSE_CHANGE",
+        "asset_id": "DEMO-REPORT-NUB-DE",
+        "requires_approval": true,
+        "total_net_sales_eur": 327000,
+        "total_forecast_eur": 336000
+      }
+    },
+    {
+      "case_id": "build",
+      "request_text": "Create a monthly Kerendia Net Sales versus Sales Forecast report for Finland, January through March 2026.",
+      "user_id": "DEMO-USER-FI",
+      "confirmed_intent": {
+        "product_ids": ["DEMO-P-KER"],
+        "market_ids": ["FI"],
+        "metric_ids": ["DEMO-NET-SALES", "DEMO-FORECAST"],
+        "months": ["2026-01-01", "2026-02-01", "2026-03-01"],
+        "grain": "month"
+      },
+      "expected": {
+        "outcome": "PROPOSE_BUILD",
+        "requires_approval": true,
+        "net_sales_eur": [217000, 219000, 221000],
+        "forecast_eur": [221000, 222000, 223000],
+        "total_net_sales_eur": 657000,
+        "total_forecast_eur": 666000
+      }
+    },
+    {
+      "case_id": "clarify",
+      "request_text": "Show sales performance.",
+      "user_id": "DEMO-USER-GLOBAL",
+      "confirmed_intent": null,
+      "expected": {
+        "outcome": "CLARIFY",
+        "unresolved": ["product", "market", "metric", "period"],
+        "must_not_generate_report": true
+      }
+    },
+    {
+      "case_id": "unsupported_metric",
+      "request_text": "Show monthly Nubeqa Gross Sales in Germany for January 2026.",
+      "user_id": "DEMO-USER-GLOBAL",
+      "confirmed_intent": {
+        "product_ids": ["DEMO-P-NUB"],
+        "market_ids": ["DE"],
+        "metric_ids": ["DEMO-GROSS-SALES"],
+        "months": ["2026-01-01"],
+        "grain": "month"
+      },
+      "expected": {
+        "outcome": "NEEDS_REVIEW",
+        "reasons": ["metric_not_approved", "metric_not_supported"],
+        "must_not_generate_report": true
+      }
+    },
+    {
+      "case_id": "access_denied",
+      "request_text": "Show monthly Nubeqa Net Sales in Germany for January 2026.",
+      "user_id": "DEMO-USER-FI",
+      "confirmed_intent": {
+        "product_ids": ["DEMO-P-NUB"],
+        "market_ids": ["DE"],
+        "metric_ids": ["DEMO-NET-SALES"],
+        "months": ["2026-01-01"],
+        "grain": "month"
+      },
+      "expected": {
+        "outcome": "ACCESS_DENIED",
+        "must_not_return_business_values_or_report_details": true,
+        "must_not_generate_report": true
+      }
+    }
+  ]
+}
