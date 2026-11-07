@@ -1,5 +1,10 @@
 # Snowflake Cortex provider setup
 
+Testers: the recommended copy-paste flow with verification and
+troubleshooting is in the README under
+[Snowflake setup for testers](../README.md#snowflake-setup-for-testers).
+This file is the detailed reference.
+
 The demo can use **Snowflake Cortex** as its optional LLM
 intent-extraction provider through the standard OpenAI SDK against the
 Cortex REST API. It is opt-in only: no provider call happens unless the
@@ -24,9 +29,15 @@ when you are ready to use it.
   user/profile menu → Settings/profile → Authentication →
   *Programmatic access tokens* (labels vary between Snowsight versions).
   Generate a local short-lived token restricted to a dedicated
-  least-privilege role that has `SNOWFLAKE.CORTEX_REST_API_USER` (or the
-  older `CORTEX_USER`) granted. Do **not** create an ACCOUNTADMIN token,
-  and do not modify account-wide network or authentication policies.
+  least-privilege role that has the database role
+  `SNOWFLAKE.CORTEX_REST_API_USER` (or the broader
+  `SNOWFLAKE.CORTEX_USER`) granted. Do **not** create an ACCOUNTADMIN
+  token, and do not modify account-wide network or authentication
+  policies.
+- Your **public outgoing IPv4** must be allowed for that Snowflake user
+  (a user-scoped network policy). The same Wi-Fi does not guarantee the
+  same public IP - VPNs and proxies differ; see the README tester
+  section for what to do when your IP is refused.
 - PAT creation can be constrained by account network/authentication
   policies — if generation or use is refused, ask your Snowflake admin;
   share only the error text (never the token) and do not bypass security
@@ -61,7 +72,7 @@ $env:SNOWFLAKE_PAT = [System.Net.NetworkCredential]::new('', $cortexToken).Passw
 Then launch the demo in that same terminal:
 
 ```powershell
-.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8021 --ui-port 8521
+.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8025 --ui-port 8525
 ```
 
 - Process env overrides `.env`, so this works even with a local `.env`
@@ -100,9 +111,16 @@ SNOWFLAKE_PAT=<store locally; never share>
 
 ## First live check (when you are ready — costs tokens)
 
-Run one manual extraction through the challenge Builder page with the
-opt-in ticked and confirm the caption reads `last extraction: llm`. An
+Follow the README's *Verify a real Snowflake extraction* steps: one
+manual extraction through the challenge Builder page with the opt-in
+ticked; the caption must read `last extraction: llm`. An
 `offline_fallback_after_llm_unavailable` caption is an honest fallback,
 **not** a live pass. Four exact challenge-domain extraction requests passed
 live testing with `claude-sonnet-4-6` on 7 November 2026. This does not
 verify general extraction accuracy, approvals, exports, or REUSE.
+
+The optional CLI diagnostic
+`tests/live_snowflake_diagnostic.py --allow-provider-call` is also a
+paid Cortex call — the flag fires the request immediately (unlike the
+UI checkbox, which merely opts in for that extraction). Its output is
+credential-redacted; review it before sharing.

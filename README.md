@@ -17,12 +17,15 @@ Implemented and locally verified for the four scenarios below:
 - Four governed report domains - commercial monthly, supply snapshot,
   market access snapshot, launch events - plus estate lifecycle
   proposals (approved but never executed).
-- Live LLM intent extraction (opt-in, CSC Aitta) followed by
-  deterministic validation, an authoritative guided form, simulated
-  approval, frozen source-row renders, and HTML/CSV/ZIP/Power Query
-  kit/PBIP exports. The LLM only proposes intent; it never computes
-  values or bypasses approval. It does not claim general dashboard or
-  report equivalence.
+- Live LLM intent extraction (opt-in) followed by deterministic
+  validation, an authoritative guided form, simulated approval, frozen
+  source-row renders, and HTML/CSV/ZIP/Power Query kit/PBIP exports.
+  **Snowflake Cortex is the recommended provider for team live tests** -
+  see [Snowflake setup for testers](#snowflake-setup-for-testers);
+  Aitta, OpenAI, and Featherless remain alternatives. Cloning the repo
+  gives you no credential - each tester configures a local PAT. The LLM
+  only proposes intent; it never computes values or bypasses approval.
+  It does not claim general dashboard or report equivalence.
 
 ## Setup (fresh clone)
 
@@ -54,45 +57,128 @@ evidence JSONs under `data/evidence/`, or place a runtime DB under
 `data/` (challenge mode refuses to run with the runtime DB inside
 `data/`).
 
-## Configuration (.env)
+## Snowflake setup for testers
 
-This repository currently tracks a `.env` with a **temporary shared
-event credential** (CSC Aitta) committed deliberately for the hackathon
-- do not print or copy the real value. Recommendations:
+**Snowflake Cortex is the recommended provider for team live tests** -
+four live extraction requests passed with this configuration on
+2026-11-07 (see Verified state). Cloning the repo gives you **no credential**: each
+tester configures a local PAT on their own machine. No model deployment
+or workbook upload is needed, and no app code changes are required.
 
-- Prefer your own credential via process environment (process env always
-  wins over `.env`).
-- The shared event token may expire, be revoked, or hit rate limits;
-  rotate it after the event.
-- `.env.example` contains placeholders only - use it as a reference if
-  `.env` is missing; do not overwrite the tracked `.env` blindly.
-- Only the whitelisted keys in `src/smart_librarian/settings.py` are
-  read; everything else in `.env` is ignored. The runtime DB defaults to
-  `var/runtime.sqlite`.
+Prerequisites per tester:
 
-Typical contents (placeholders):
+- Your own clone + the install above (Python >= 3.11, internet).
+- A valid Snowflake PAT for a user with Cortex access - prefer your own
+  scoped PAT on a least-privilege role with
+  `SNOWFLAKE.CORTEX_REST_API_USER` (or the broader `SNOWFLAKE.CORTEX_USER`)
+  (steps in [docs/SNOWFLAKE_SETUP.md](docs/SNOWFLAKE_SETUP.md)).
+- Your public outgoing IPv4 must be allowed for that Snowflake user.
+  Sitting on the same Wi-Fi does not guarantee the same public IP
+  (VPNs/proxies differ), and an allowed IP alone does not grant Cortex
+  access. If your IP is refused, an admin must scope a user-level
+  network policy to your IP - never `0.0.0.0/0` or an account-wide
+  opening.
 
-```dotenv
-LLM_PROVIDER=aitta
-LLM_MODEL=openai/gpt-oss-120b
-AITTA_API_TOKEN=<your-token>
+Team example account host (not a secret):
+`TNRTNCL-SX96827.snowflakecomputing.com`. Your own account works the
+same - substitute the hostname and an available model.
+
+In one **private PowerShell** terminal at the repo root, foreground:
+
+```powershell
+$env:LLM_PROVIDER = 'snowflake'
+$env:SNOWFLAKE_ACCOUNT_HOST = 'TNRTNCL-SX96827.snowflakecomputing.com'
+$env:LLM_MODEL = 'claude-sonnet-4-6'
+$cortexToken = Read-Host 'Snowflake PAT' -AsSecureString
+$env:SNOWFLAKE_PAT = [System.Net.NetworkCredential]::new('', $cortexToken).Password
+.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8025 --ui-port 8525
 ```
 
-For OpenAI instead set `LLM_PROVIDER=openai`, `LLM_MODEL=gpt-4.1-mini`
-and `OPENAI_API_KEY`; use only the matching provider credential.
-Snowflake Cortex is also supported
-(`LLM_PROVIDER=snowflake` + `SNOWFLAKE_ACCOUNT_HOST` + `SNOWFLAKE_PAT`;
-OpenAI-compatible REST, PAT auth) — see
-[docs/SNOWFLAKE_SETUP.md](docs/SNOWFLAKE_SETUP.md). See
-[docs/AITTA_SETUP.md](docs/AITTA_SETUP.md) for Aitta access. The app and
-any Power BI project run locally, but LLM inference is a **remote** call
-to the selected provider (Aitta, OpenAI, Featherless, or Snowflake) - it needs internet and a valid
-credential. The opt-in is the
-"Send request text + catalog metadata to the LLM" checkbox on the
-challenge Builder page; the request text and catalog metadata (no source
-business figures) are sent - never enter secrets or confidential text.
-If the provider is unavailable the UI explicitly shows the offline
-fallback warning - it never claims live-LLM success.
+- The token is typed once, hidden, and lives only in that shell session.
+  Never put the token literal in a shared file, chat, Git, docs, or a
+  screenshot - and never echo `$env:SNOWFLAKE_PAT`. After the terminal
+  closes, re-enter the variables in a new one.
+- Process env overrides any `.env`. An already-running API does **not**
+  pick up new shell variables - restart only your own launcher (Ctrl+C
+  in its terminal, then rerun the block). `--background` is unsupported
+  for this token flow: the scheduled task does not inherit shell-only
+  variables.
+- The launcher wires the UI to its own API port automatically. Keep the
+  terminal open while testing.
+
+### Verify a real Snowflake extraction
+
+In a **second** PowerShell terminal (the first is busy running the
+demo), run this read-only check - it makes no Cortex call:
+
+```powershell
+Invoke-RestMethod 'http://127.0.0.1:8025/api/capabilities' | Select-Object provider, model, configured
+```
+
+Expected: provider `snowflake`, model `claude-sonnet-4-6`,
+configured `True` - meaning credentials are **present**, not that
+authentication succeeded.
+
+Then in the UI (<http://127.0.0.1:8525>): workspace **Builder pack
+reports**, Source domain **Commercial**, sidebar
+`DEMO-CHALLENGE-REQUESTER`. Tick **"Send request text + catalog
+metadata to the LLM"**, enter exactly `Show monthly Nubeqa net sales
+and sales forecast in Germany for January through March 2026.` and
+click **Extract intent**.
+
+Expected: caption `last extraction: llm`; the form proposes products
+`P-NUB`, market `DE`, source fields `net_sales_m_eur_syn` +
+`forecast_m_eur_syn`, months `2026-01-01`..`2026-03-01`, grain month.
+Confirm the form, choose owner `OWN-001`, and continue the normal
+walkthrough (create/approve/render) - extraction alone creates nothing.
+A caption `offline_fallback_after_llm_unavailable` means the live case
+is **BLOCKED, not a pass** - the offline flow still works but records
+no LLM pass.
+
+Only the request text and catalog metadata are sent remotely - never
+source business figures. Each extraction is a paid remote call; do not
+type secrets or confidential text.
+
+### Troubleshooting (Snowflake)
+
+| Symptom | Fix |
+| --- | --- |
+| Offline-fallback caption | Check capabilities and the UI port first; an old instance can select a different provider. `configured=True` does not prove authentication. Review the reported error before changing settings. |
+| Authentication error | Check whether the PAT is active, its role has access, and your public IP is allowed for that user; never share the token. |
+| `max_tokens is deprecated` | `git pull` - the Snowflake request now sends `max_completion_tokens`; restart your own launcher (nothing else changes). |
+| `openai package is not installed` | Rerun the pip install with the `[ui,llm,dev]` extra using the venv Python. |
+| Port busy | Pick a fresh `--api-port`/`--ui-port` pair; never kill unknown processes. |
+
+Optional manual connectivity check - a **single paid call**, not a
+four-domain verification. In a configured private shell (stop your own
+foreground launcher first if needed):
+
+```powershell
+.\.venv\Scripts\python.exe tests\live_snowflake_diagnostic.py --allow-provider-call
+```
+
+Output is credential-redacted; still review it before sharing.
+
+### Other providers and offline testing
+
+- Aitta: `LLM_PROVIDER=aitta` + `AITTA_API_TOKEN` +
+  `LLM_MODEL=openai/gpt-oss-120b` - see
+  [docs/AITTA_SETUP.md](docs/AITTA_SETUP.md). OpenAI: `openai` +
+  `OPENAI_API_KEY` + `gpt-4.1-mini`. Featherless: `featherless` +
+  `FEATHERLESS_API_KEY` + a catalog model id. A credential is only ever
+  sent to its own provider.
+- `.env` is local and git-ignored - never commit it. `.env.example`
+  holds placeholders only: copy it only if you have no `.env`, or merge
+  specific keys safely. Only the whitelisted keys in
+  `src/smart_librarian/settings.py` are read; process env always wins.
+  The runtime DB defaults to `var/runtime.sqlite`. Any credential
+  committed historically should be rotated, not reused as a shared
+  token.
+- Offline testing needs no provider at all: uncheck the LLM box and use
+  the domain **Prefill** buttons - the full guided workflow functions,
+  it just is not an LLM pass. If the provider is unavailable the UI
+  explicitly shows the offline-fallback warning - it never claims
+  live-LLM success.
 
 Running the demo with a team? The full four-dataset live-LLM test
 package lives in `docs/`: the authoritative
@@ -106,14 +192,19 @@ sections), the rendered slide deck
 
 ## Run the demo
 
+Configure the provider env vars first (see Snowflake setup for testers
+above), then in the same shell:
+
 ```powershell
-.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8021 --ui-port 8521
+.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8025 --ui-port 8525
 ```
 
-Open http://127.0.0.1:8521 (UI). The API base is
-http://127.0.0.1:8021 with interactive docs at
-http://127.0.0.1:8021/docs. Loopback only - each user runs their own local
-instance; do not expose the unauthenticated API remotely.
+Open http://127.0.0.1:8525 (UI). The API base is
+http://127.0.0.1:8025 with interactive docs at
+http://127.0.0.1:8025/docs. Loopback only - each user runs their own local
+instance; do not expose the unauthenticated API remotely. If a port is
+already serving something, use the exact printed URL - an older
+instance may be running a different provider config.
 
 - Foreground mode keeps the terminal open; Ctrl+C stops only the
   children it spawned. Busy ports? Pick different `--api-port`/
@@ -127,7 +218,8 @@ instance; do not expose the unauthenticated API remotely.
   (`.env` is still loaded). Logs land in `artifacts/logs/`, plans in
   `var/runtime.sqlite`.
 - Bare `python run_demo.py` also defaults to challenge mode but on ports
-  8000/8501 - `--api-port`/`--ui-port` pick others.
+  8000/8501 (the older Aitta example ports) - the Snowflake tester flow
+  above uses 8025/8525; `--api-port`/`--ui-port` pick others.
 
 Mode table:
 
@@ -214,6 +306,15 @@ in native units (snapshots show no invented time trends).
   `launcher-final-narrow.txt`, `pbi-accept-gate.log`) and
   `artifacts/downloads/team_acceptance_20261107_072528/` is local and
   git-ignored - not part of a fresh clone.
+- Snowflake Cortex live extraction was verified separately on
+  2026-11-07: all four requests above returned extraction mode `llm`
+  (no fallback) with the expected products/markets/metrics/periods/grain
+  on model `claude-sonnet-4-6`. Evidence:
+  `artifacts/logs/snowflake_live_20261107_170832_665939/results.json`
+  and `artifacts/logs/snowflake_ui_recheck_20261107_173007_684893.json`
+  (local, git-ignored). Approval/render/export/REUSE were not re-run
+  under Snowflake - the end-to-end checks above used the earlier
+  provider.
 - Live provider behavior is not part of the automated suite; the
   provider-outage path is covered by a mocked fallback test. These are
   finite checks, not a soak test or a general accuracy guarantee.
@@ -234,7 +335,7 @@ Focused suites: `test_challenge.py`, `test_pbip_dashboard.py`,
 .
 |-- run_demo.py               # Launcher: API + UI, foreground or --background
 |-- pyproject.toml            # Python >= 3.11, extras: ui, llm, dev
-|-- .env / .env.example       # Whitelisted config keys (tracked .env = event cred)
+|-- .env / .env.example       # local .env ignored; .env.example = tracked placeholder
 |-- apps/streamlit_app.py     # Streamlit UI (HTTP client of the API only)
 |-- src/smart_librarian/
 |   |-- challenge.py          # Read-only workbook contracts/source engine
@@ -245,7 +346,7 @@ Focused suites: `test_challenge.py`, `test_pbip_dashboard.py`,
 |   |-- persistence/store.py  # Runtime SQLite: plans, audit, reports
 |   `-- settings.py           # Env/.env whitelisting, paths, provider status
 |-- docs/                     # ARCHITECTURE.md, CHALLENGE_DEMO.md,
-|                             # AITTA_SETUP.md, DEPLOYMENT.md
+|                             # AITTA_SETUP.md, SNOWFLAKE_SETUP.md, DEPLOYMENT.md
 |-- data/                     # Source workbook (read-only) + frozen evidence
 |-- var/                      # Runtime SQLite (git-ignored, auto-created)
 `-- artifacts/                # Local logs + validation evidence (git-ignored)
@@ -262,5 +363,5 @@ catalogs.
 Suggested next steps for a team: broaden manual UX and edge-case
 coverage, keep the governance controls and frozen-evidence guarantees
 intact while extending, design the presentation and deployment shape
-(proposed architecture in `docs/DEPLOYMENT.md`), and rotate the shared
-event credential.
+(proposed architecture in `docs/DEPLOYMENT.md`), and rotate any
+previously committed credentials.
