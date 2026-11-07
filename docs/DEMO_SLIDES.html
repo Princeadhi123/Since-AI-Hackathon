@@ -20,7 +20,7 @@ code{font-family:Consolas,"Courier New",monospace;background:#efe7d6;
 pre{position:relative;background:var(--navy);color:#f3ead9;padding:.8em 1em;
   border-radius:10px;font-family:Consolas,"Courier New",monospace;
   font-size:.9em;line-height:1.45;overflow-x:auto;white-space:pre-wrap;
-  word-break:break-word;margin:.55em 0;}
+  overflow-wrap:anywhere;margin:.55em 0;}
 pre code{background:none;padding:0;color:inherit;}
 .copybtn{position:absolute;top:.4em;right:.5em;font:600 .7rem "Trebuchet MS";
   background:var(--teal);border:none;color:#fff;border-radius:6px;
@@ -50,7 +50,7 @@ ul.steps li.evi{background:var(--teal-soft);border-left:4px solid var(--teal);
   border-radius:0 8px 8px 0;padding:.45em .7em .45em 1.25em;}
 ul.steps li.evi::before{background:var(--teal);left:.45em;}
 ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
-  letter-spacing:.08em;display:block;color:var(--muted);}
+  letter-spacing:.08em;display:block;color:var(--navy);}
 .slide.title-slide{background:linear-gradient(135deg,var(--navy) 0%,#1e3050 55%,var(--teal) 130%);
   color:var(--ivory);border-top-color:var(--coral);}
 .slide.title-slide h1{color:var(--ivory);border:none;}
@@ -89,9 +89,9 @@ ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
 @page{size:13.333in 7.5in;margin:0;}
 @media print{
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  #controls,#progress,#toc,.copybtn{display:none!important;}
+  #controls,#progress,#toc,.copybtn{display:none;}
   #deck{height:auto;overflow:visible;}
-  .slide{position:static;display:block!important;overflow:visible;
+  #deck .slide{position:static;display:block;overflow:visible;
     page-break-after:always;min-height:auto;padding:.7cm 1cm;animation:none;}
   .slide h2{font-size:15pt;margin-bottom:.3em;}
   body{font-size:8.8pt;}
@@ -160,9 +160,9 @@ ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
 </div>
 <div id="controls" role="toolbar" aria-label="Slide controls">
   <button class="sec" id="tocBtn">&#9776; Contents</button>
-  <button id="prevBtn" aria-label="Previous slide">&#8592; Prev</button>
+  <button id="prevBtn">&#8592; Prev</button>
   <span id="counter">1 / 45</span>
-  <button id="nextBtn" aria-label="Next slide">Next &#8594;</button>
+  <button id="nextBtn">Next &#8594;</button>
   <button class="sec" id="fsBtn" title="Fullscreen">&#9974; Full</button>
   <button class="sec" id="printBtn">Print</button>
 </div>
@@ -179,7 +179,7 @@ ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
   document.querySelectorAll('#tocList a').forEach(function(a){
     a.addEventListener('click',function(e){
       e.preventDefault();
-      go(parseInt(a.dataset.idx,10)); closeToc();
+      go(Number.parseInt(a.dataset.idx,10)); closeToc();
     });
   });
   function go(i){
@@ -244,7 +244,7 @@ ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
     else if(e.key==='End'){e.preventDefault();go(n-1);}
   });
   var m = location.hash.match(/slide-(\d+)/);
-  go(m ? parseInt(m[1],10)-1 : 0);
+  go(m ? Number.parseInt(m[1],10)-1 : 0);
 })();
 </script>
 </body>

@@ -21,6 +21,10 @@ RUNBOOK = DOCS / "TEAM_DEMO_TEST_RUNBOOK.md"
 HTML_OUT = DOCS / "DEMO_SLIDES.html"
 PPTX_OUT = DOCS / "DEMO_SLIDES.pptx"
 
+FONT_BODY = "Trebuchet MS"
+FONT_DISPLAY = "Georgia"
+FONT_MONO = "Consolas"
+
 CHAPTERS = [
     (range(1, 8),   "setup",        "Setup & ground rules", "#17233f"),
     (range(8, 13),  "commercial",   "Commercial C1-C5",     "#0f766e"),
@@ -36,6 +40,25 @@ def chapter_for(num):
         if num in rng:
             return key, label, color
     return "shared", "Shared checks G1-G17", "#2c3a5e"
+
+
+def _handle_section_line(cur, line, in_code):
+    """Handle one body line inside a numbered section.
+
+    Mutates cur["blocks"]; returns the new in_code state.
+    """
+    if line.strip().startswith("```"):
+        if not in_code:
+            cur["blocks"].append(("c", []))
+        return not in_code
+    if in_code:
+        cur["blocks"][-1][1].append(line.rstrip())
+        return in_code
+    if line.startswith("- "):
+        cur["blocks"].append(("b", line[2:].rstrip()))
+    elif line.strip():
+        cur["blocks"].append(("p", line.rstrip()))
+    return in_code
 
 
 def parse_runbook(text):
@@ -56,18 +79,7 @@ def parse_runbook(text):
             if line.strip() and not line.startswith("# "):
                 intro.append(line.rstrip())
             continue
-        if line.strip().startswith("```"):
-            in_code = not in_code
-            if in_code:
-                cur["blocks"].append(("c", []))
-            continue
-        if in_code:
-            cur["blocks"][-1][1].append(line.rstrip())
-            continue
-        if line.startswith("- "):
-            cur["blocks"].append(("b", line[2:].rstrip()))
-        elif line.strip():
-            cur["blocks"].append(("p", line.rstrip()))
+        in_code = _handle_section_line(cur, line, in_code)
     return intro, sections
 
 
@@ -109,7 +121,7 @@ code{font-family:Consolas,"Courier New",monospace;background:#efe7d6;
 pre{position:relative;background:var(--navy);color:#f3ead9;padding:.8em 1em;
   border-radius:10px;font-family:Consolas,"Courier New",monospace;
   font-size:.9em;line-height:1.45;overflow-x:auto;white-space:pre-wrap;
-  word-break:break-word;margin:.55em 0;}
+  overflow-wrap:anywhere;margin:.55em 0;}
 pre code{background:none;padding:0;color:inherit;}
 .copybtn{position:absolute;top:.4em;right:.5em;font:600 .7rem "Trebuchet MS";
   background:var(--teal);border:none;color:#fff;border-radius:6px;
@@ -139,7 +151,7 @@ ul.steps li.evi{background:var(--teal-soft);border-left:4px solid var(--teal);
   border-radius:0 8px 8px 0;padding:.45em .7em .45em 1.25em;}
 ul.steps li.evi::before{background:var(--teal);left:.45em;}
 ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
-  letter-spacing:.08em;display:block;color:var(--muted);}
+  letter-spacing:.08em;display:block;color:var(--navy);}
 .slide.title-slide{background:linear-gradient(135deg,var(--navy) 0%,#1e3050 55%,var(--teal) 130%);
   color:var(--ivory);border-top-color:var(--coral);}
 .slide.title-slide h1{color:var(--ivory);border:none;}
@@ -178,9 +190,9 @@ ul.steps li .lbl{font-weight:700;text-transform:uppercase;font-size:.72em;
 @page{size:13.333in 7.5in;margin:0;}
 @media print{
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  #controls,#progress,#toc,.copybtn{display:none!important;}
+  #controls,#progress,#toc,.copybtn{display:none;}
   #deck{height:auto;overflow:visible;}
-  .slide{position:static;display:block!important;overflow:visible;
+  #deck .slide{position:static;display:block;overflow:visible;
     page-break-after:always;min-height:auto;padding:.7cm 1cm;animation:none;}
   .slide h2{font-size:15pt;margin-bottom:.3em;}
   body{font-size:8.8pt;}
@@ -201,7 +213,7 @@ JS = """
   document.querySelectorAll('#tocList a').forEach(function(a){
     a.addEventListener('click',function(e){
       e.preventDefault();
-      go(parseInt(a.dataset.idx,10)); closeToc();
+      go(Number.parseInt(a.dataset.idx,10)); closeToc();
     });
   });
   function go(i){
@@ -266,24 +278,21 @@ JS = """
     else if(e.key==='End'){e.preventDefault();go(n-1);}
   });
   var m = location.hash.match(/slide-(\\d+)/);
-  go(m ? parseInt(m[1],10)-1 : 0);
+  go(m ? Number.parseInt(m[1],10)-1 : 0);
 })();
 """
 
 
-def render_html(intro, sections):
-    toc_links = []
-    slides_html = []
-
+def _title_slide_html(intro):
     title_intro = " ".join(intro)
-    slides_html.append(
+    return (
         '<section class="slide title-slide" data-title="Title" '
         'style="--accent:#e76f51">'
         '<div class="slide-inner">'
         '<p class="kicker">Smart Librarian - complete team demo test deck</p>'
-        f'<h1 style="font-size:clamp(2rem,4.6vw,3.4rem);margin:.2em 0;">'
-        f'Full four-dataset<br>live-LLM test run</h1>'
-        f'<p style="font-size:1.05rem;max-width:44em;color:#dfe5f2;">'
+        '<h1 style="font-size:clamp(2rem,4.6vw,3.4rem);margin:.2em 0;">'
+        'Full four-dataset<br>live-LLM test run</h1>'
+        '<p style="font-size:1.05rem;max-width:44em;color:#dfe5f2;">'
         f'{md(title_intro)}</p>'
         '<div style="margin-top:1.2em;">'
         '<span class="tag">44 test sections</span>'
@@ -294,57 +303,58 @@ def render_html(intro, sections):
         'Arrow keys / Space navigate. The Contents button jumps to any '
         'section. Print produces one landscape page per section.</p>'
         '<div class="legend">'
-        '<span><i class="dot" style="background:#e76f51"></i>Orange = expected result</span>'
-        '<span><i class="dot" style="background:#0f766e"></i>Teal = evidence to record</span>'
-        '<span><i class="dot" style="background:#17233f"></i>Dot = action / instruction</span>'
+        '<span><i class="dot" style="background:#e76f51"></i>'
+        'Orange = expected result</span>'
+        '<span><i class="dot" style="background:#0f766e"></i>'
+        'Teal = evidence to record</span>'
+        '<span><i class="dot" style="background:#17233f"></i>'
+        'Dot = action / instruction</span>'
         '</div></div></section>')
-    toc_links.append(('Title', '#e76f51', 0))
 
-    last_chapter = None
-    for s in sections:
-        key, label, color = chapter_for(s["num"])
-        if key != last_chapter:
-            toc_links.append(("CH:" + label, color, None))
-            last_chapter = key
-        idx = len(slides_html)
-        toc_links.append((f'{s["num"]:02d} {s["title"]}', color, idx))
 
-        parts = [f'<section class="slide" data-title="{s["num"]:02d} | '
-                 f'{html.escape(s["title"])}" style="--accent:{color}">',
-                 '<div class="slide-inner">',
-                 f'<p class="kicker">{html.escape(label)}</p>',
-                 f'<h2><span class="secnum">{s["num"]:02d}</span>'
-                 f'{html.escape(s["title"])}</h2>']
-        bullets = [b for b in s["blocks"] if b[0] == "b"]
-        in_list = False
-        for kind, payload in s["blocks"]:
-            if kind == "b":
-                if not in_list:
-                    parts.append('<ul class="steps">')
-                    in_list = True
-                cls = classify(payload)
-                lbl = ""
-                if cls == "exp":
-                    lbl = '<span class="lbl">Expected</span>'
-                elif cls == "evi":
-                    lbl = '<span class="lbl">Evidence</span>'
-                parts.append(f'<li class="{cls}">{lbl}{md(payload)}</li>')
+def _bullet_html(payload):
+    cls = classify(payload)
+    lbl = {"exp": '<span class="lbl">Expected</span>',
+           "evi": '<span class="lbl">Evidence</span>'}.get(cls, "")
+    return f'<li class="{cls}">{lbl}{md(payload)}</li>'
+
+
+def _section_body_html(blocks):
+    parts = []
+    in_list = False
+    for kind, payload in blocks:
+        if kind == "b":
+            if not in_list:
+                parts.append('<ul class="steps">')
+                in_list = True
+            parts.append(_bullet_html(payload))
+        else:
+            if in_list:
+                parts.append('</ul>')
+                in_list = False
+            if kind == "c":
+                code = html.escape("\n".join(payload))
+                parts.append(
+                    '<pre><button class="copybtn" type="button">Copy'
+                    f'</button><code>{code}</code></pre>')
             else:
-                if in_list:
-                    parts.append('</ul>')
-                    in_list = False
-                if kind == "c":
-                    code = html.escape("\n".join(payload))
-                    parts.append(
-                        f'<pre><button class="copybtn" type="button">Copy'
-                        f'</button><code>{code}</code></pre>')
-                else:
-                    parts.append(f'<p>{md(payload)}</p>')
-        if in_list:
-            parts.append('</ul>')
-        parts.append('</div></section>')
-        slides_html.append("".join(parts))
+                parts.append(f'<p>{md(payload)}</p>')
+    if in_list:
+        parts.append('</ul>')
+    return "".join(parts)
 
+
+def _section_slide_html(s, label, color):
+    head = (f'<section class="slide" data-title="{s["num"]:02d} | '
+            f'{html.escape(s["title"])}" style="--accent:{color}">'
+            '<div class="slide-inner">'
+            f'<p class="kicker">{html.escape(label)}</p>'
+            f'<h2><span class="secnum">{s["num"]:02d}</span>'
+            f'{html.escape(s["title"])}</h2>')
+    return head + _section_body_html(s["blocks"]) + '</div></section>'
+
+
+def _toc_links_html(toc_links):
     toc_html = []
     for label, color, idx in toc_links:
         if idx is None:
@@ -355,6 +365,22 @@ def render_html(intro, sections):
             toc_html.append(
                 f'<a href="#" data-idx="{idx}"><i class="dot" '
                 f'style="background:{color}"></i>{html.escape(label)}</a>')
+    return "".join(toc_html)
+
+
+def render_html(intro, sections):
+    slides_html = [_title_slide_html(intro)]
+    toc_links = [('Title', '#e76f51', 0)]
+
+    last_chapter = None
+    for s in sections:
+        key, label, color = chapter_for(s["num"])
+        if key != last_chapter:
+            toc_links.append(("CH:" + label, color, None))
+            last_chapter = key
+        toc_links.append((f'{s["num"]:02d} {s["title"]}', color,
+                          len(slides_html)))
+        slides_html.append(_section_slide_html(s, label, color))
 
     total = len(slides_html)
     return f"""<!DOCTYPE html>
@@ -369,16 +395,16 @@ def render_html(intro, sections):
 <nav id="toc" aria-label="Table of contents" inert>
   <button class="closebtn" id="tocClose" aria-label="Close contents">&times;</button>
   <h3 style="margin-top:0">Contents</h3>
-  <div id="tocList">{''.join(toc_html)}</div>
+  <div id="tocList">{_toc_links_html(toc_links)}</div>
 </nav>
 <div id="deck">
 {chr(10).join(slides_html)}
 </div>
 <div id="controls" role="toolbar" aria-label="Slide controls">
   <button class="sec" id="tocBtn">&#9776; Contents</button>
-  <button id="prevBtn" aria-label="Previous slide">&#8592; Prev</button>
+  <button id="prevBtn">&#8592; Prev</button>
   <span id="counter">1 / {total}</span>
-  <button id="nextBtn" aria-label="Next slide">Next &#8594;</button>
+  <button id="nextBtn">Next &#8594;</button>
   <button class="sec" id="fsBtn" title="Fullscreen">&#9974; Full</button>
   <button class="sec" id="printBtn">Print</button>
 </div>
@@ -407,15 +433,8 @@ def est_lines(text, size, width_in=11.9):
     return max(1, math.ceil(len(text) / cpl))
 
 
-def render_pptx(intro, sections):
-    prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
-    blank = prs.slide_layouts[6]
-    total = len(sections) + 1
-
-    # --- title slide ---
-    slide = prs.slides.add_slide(blank)
+def _pptx_title_slide(prs, intro, total):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
     bg = slide.shapes.add_shape(1, 0, 0, prs.slide_width, prs.slide_height)
     bg.fill.solid(); bg.fill.fore_color.rgb = NAVY; bg.line.fill.background()
     band = slide.shapes.add_shape(1, 0, Inches(5.9),
@@ -423,99 +442,118 @@ def render_pptx(intro, sections):
     band.fill.solid(); band.fill.fore_color.rgb = hx("#e76f51")
     band.line.fill.background()
 
-    tb = slide.shapes.add_textbox(Inches(0.8), Inches(0.7), Inches(11.7), Inches(0.5))
+    tb = slide.shapes.add_textbox(Inches(0.8), Inches(0.7),
+                                  Inches(11.7), Inches(0.5))
     p = tb.text_frame.paragraphs[0]
     r = p.add_run(); r.text = "SMART LIBRARIAN - COMPLETE TEAM DEMO TEST DECK"
     r.font.size = Pt(13); r.font.bold = True; r.font.color.rgb = hx("#9fd4cd")
 
-    tb = slide.shapes.add_textbox(Inches(0.8), Inches(1.25), Inches(11.7), Inches(1.8))
+    tb = slide.shapes.add_textbox(Inches(0.8), Inches(1.25),
+                                  Inches(11.7), Inches(1.8))
     p = tb.text_frame.paragraphs[0]
     r = p.add_run(); r.text = "Full four-dataset live-LLM test run"
     r.font.size = Pt(44); r.font.bold = True
-    r.font.name = "Georgia"; r.font.color.rgb = IVORY
+    r.font.name = FONT_DISPLAY; r.font.color.rgb = IVORY
 
-    tb = slide.shapes.add_textbox(Inches(0.8), Inches(3.0), Inches(11.5), Inches(2.6))
+    tb = slide.shapes.add_textbox(Inches(0.8), Inches(3.0),
+                                  Inches(11.5), Inches(2.6))
     tf = tb.text_frame; tf.word_wrap = True
     for i, line in enumerate(intro):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         r = p.add_run(); r.text = line.strip()
-        r.font.size = Pt(15); r.font.name = "Trebuchet MS"
+        r.font.size = Pt(15); r.font.name = FONT_BODY
         r.font.color.rgb = RGBColor(0xDF, 0xE5, 0xF2)
         p.space_after = Pt(5)
     p = tf.add_paragraph()
     r = p.add_run()
-    r.text = "Legend: bullet = action; orange text = expected result; teal text = evidence to record; Consolas = copyable command."
+    r.text = ("Legend: bullet = action; orange text = expected result; "
+              "teal text = evidence to record; Consolas = copyable command.")
     r.font.size = Pt(13); r.font.italic = True
     r.font.color.rgb = hx("#9fd4cd")
     _page_num(slide, 1, total, "#e76f51")
 
-    # --- section slides ---
+
+def _fit_font_size(blocks):
+    """Pick the largest body font size (15 down to 11) that fits."""
+    size = 15
+    while size > 11:
+        lines = sum(
+            est_lines(pl if isinstance(pl, str) else " ".join(pl), size)
+            for _, pl in blocks)
+        if lines * (size * 1.35) <= 5.1 * 72:
+            break
+        size -= 1
+    return size
+
+
+def _body_runs(blocks):
+    """Yield (text, font, size_delta, color, space_after) per body line."""
+    for kind, payload in blocks:
+        if kind == "b":
+            color = {"exp": CORAL, "evi": TEAL}.get(classify(payload), INK)
+            yield "- " + payload, FONT_BODY, 0, color, 4
+        elif kind == "c":
+            for cl in payload:
+                yield cl, FONT_MONO, 1, NAVY, 2
+        else:
+            yield payload, FONT_BODY, 1, MUTED, 4
+
+
+def _add_body(tf, blocks, size):
+    first = True
+    for text, font, delta, color, space in _body_runs(blocks):
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.space_after = Pt(space)
+        r = p.add_run(); r.text = text
+        r.font.name = font; r.font.size = Pt(size - delta)
+        r.font.color.rgb = color
+
+
+def _pptx_section_slide(prs, s, idx, total):
+    _key, label, color = chapter_for(s["num"])
+    accent = hx(color)
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+    bar = slide.shapes.add_shape(1, 0, 0, prs.slide_width, Pt(6))
+    bar.fill.solid(); bar.fill.fore_color.rgb = accent
+    bar.line.fill.background()
+
+    tb = slide.shapes.add_textbox(Inches(0.6), Inches(0.32),
+                                  Inches(12), Inches(0.4))
+    p = tb.text_frame.paragraphs[0]
+    r = p.add_run(); r.text = label.upper()
+    r.font.size = Pt(12); r.font.bold = True; r.font.color.rgb = accent
+
+    tb = slide.shapes.add_textbox(Inches(0.6), Inches(0.72),
+                                  Inches(12), Inches(0.95))
+    p = tb.text_frame.paragraphs[0]
+    r = p.add_run(); r.text = f'{s["num"]:02d} | {s["title"]}'
+    r.font.size = Pt(28); r.font.bold = True
+    r.font.name = FONT_DISPLAY; r.font.color.rgb = NAVY
+
+    ln = slide.shapes.add_shape(1, Inches(0.62), Inches(1.55),
+                                Inches(2.2), Pt(3))
+    ln.fill.solid(); ln.fill.fore_color.rgb = accent
+    ln.line.fill.background()
+
+    body = slide.shapes.add_textbox(Inches(0.7), Inches(1.8),
+                                    Inches(11.9), Inches(5.3))
+    tf = body.text_frame; tf.word_wrap = True
+    _add_body(tf, s["blocks"], _fit_font_size(s["blocks"]))
+
+    _page_num(slide, idx, total, color)
+
+
+def render_pptx(intro, sections):
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+    total = len(sections) + 1
+
+    _pptx_title_slide(prs, intro, total)
     for idx, s in enumerate(sections, start=2):
-        key, label, color = chapter_for(s["num"])
-        accent = hx(color)
-        slide = prs.slides.add_slide(blank)
-
-        bar = slide.shapes.add_shape(1, 0, 0, prs.slide_width, Pt(6))
-        bar.fill.solid(); bar.fill.fore_color.rgb = accent
-        bar.line.fill.background()
-
-        tb = slide.shapes.add_textbox(Inches(0.6), Inches(0.32), Inches(12), Inches(0.4))
-        p = tb.text_frame.paragraphs[0]
-        r = p.add_run(); r.text = label.upper()
-        r.font.size = Pt(12); r.font.bold = True; r.font.color.rgb = accent
-
-        tb = slide.shapes.add_textbox(Inches(0.6), Inches(0.72), Inches(12), Inches(0.95))
-        p = tb.text_frame.paragraphs[0]
-        r = p.add_run(); r.text = f'{s["num"]:02d} | {s["title"]}'
-        r.font.size = Pt(28); r.font.bold = True
-        r.font.name = "Georgia"; r.font.color.rgb = NAVY
-
-        ln = slide.shapes.add_shape(1, Inches(0.62), Inches(1.55),
-                                    Inches(2.2), Pt(3))
-        ln.fill.solid(); ln.fill.fore_color.rgb = accent
-        ln.line.fill.background()
-
-        # fit estimate -> choose body font size
-        blocks = s["blocks"]
-        size = 15
-        while size > 11:
-            lines = sum(
-                est_lines(pl if isinstance(pl, str) else " ".join(pl), size)
-                for _, pl in blocks)
-            if lines * (size * 1.35) <= 5.1 * 72:
-                break
-            size -= 1
-
-        body = slide.shapes.add_textbox(Inches(0.7), Inches(1.8),
-                                        Inches(11.9), Inches(5.3))
-        tf = body.text_frame; tf.word_wrap = True
-        first = True
-        for kind, payload in blocks:
-            if kind == "b":
-                cls = classify(payload)
-                p = tf.paragraphs[0] if first else tf.add_paragraph()
-                first = False
-                p.space_after = Pt(4)
-                r = p.add_run(); r.text = "- " + payload
-                r.font.name = "Trebuchet MS"; r.font.size = Pt(size)
-                r.font.color.rgb = {"exp": CORAL, "evi": TEAL}.get(cls, INK)
-            elif kind == "c":
-                for cl in payload:
-                    p = tf.paragraphs[0] if first else tf.add_paragraph()
-                    first = False
-                    p.space_after = Pt(2)
-                    r = p.add_run(); r.text = cl
-                    r.font.name = "Consolas"; r.font.size = Pt(size - 1)
-                    r.font.color.rgb = NAVY
-            else:
-                p = tf.paragraphs[0] if first else tf.add_paragraph()
-                first = False
-                p.space_after = Pt(4)
-                r = p.add_run(); r.text = payload
-                r.font.name = "Trebuchet MS"; r.font.size = Pt(size - 1)
-                r.font.color.rgb = MUTED
-
-        _page_num(slide, idx, total, color)
+        _pptx_section_slide(prs, s, idx, total)
 
     prs.save(PPTX_OUT)
 
