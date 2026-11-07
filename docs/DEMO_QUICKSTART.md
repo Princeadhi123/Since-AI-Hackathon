@@ -1,36 +1,33 @@
 # Demo guide index — Smart Librarian (challenge mode)
 
-This is a **team testing package**, not a 5-minute intro. It drives all
-four challenge datasets (Commercial, Supply, Market Access, Launch)
-through live-LLM extraction, explicit confirmation, simulated approval,
-frozen reports, exports, and REUSE. Everything is a local, synthetic-data
-demo — never real Bayer data, never exposed remotely.
+A **team testing package** driving all four challenge datasets
+(Commercial, Supply, Market Access, Launch) through live Snowflake Cortex
+extraction, explicit confirmation, simulated approval, frozen reports,
+exports, and REUSE. Local, synthetic data only — never real Bayer data,
+never exposed remotely.
 
 | Resource | What it is |
 | --- | --- |
-| [TEAM_DEMO_TEST_RUNBOOK.md](TEAM_DEMO_TEST_RUNBOOK.md) | **Source of truth.** 44 numbered test sections with exact requests, scopes, expected results, and evidence to capture. |
-| [DEMO_SLIDES.html](DEMO_SLIDES.html) | Slide deck rendering the same 44 sections — open in any browser, works fully offline; arrow keys/Space navigate, Contents jumps by chapter, Print gives one landscape page per section. |
-| [DEMO_SLIDES.pptx](DEMO_SLIDES.pptx) | Editable PowerPoint version of the deck. |
+| [DEMO_WALKTHROUGH.md](DEMO_WALKTHROUGH.md) | **Easy guide — the deck's source.** 44 numbered steps; each says what to **Do**, what you should **See**, what it **Proves**, and what to **Remember**. |
+| [DEMO_SLIDES.html](DEMO_SLIDES.html) | Slide deck rendering the same 44 steps (45 slides with cover) — open in any browser, fully self-contained; arrows/Space navigate, Contents jumps by chapter, Print gives one landscape page per step. |
+| [DEMO_SLIDES.pptx](DEMO_SLIDES.pptx) | Editable PowerPoint version. |
 | [DEMO_SLIDES.pdf](DEMO_SLIDES.pdf) | Printable PDF of the deck. |
-| [TEAM_DEMO_RESULTS_TEMPLATE.csv](TEAM_DEMO_RESULTS_TEMPLATE.csv) | Blank results sheet: one row per case (C1–C5, S1–S5, M1–M5, L1–L5, G1–G17) — record actual results here, never pre-fill passes. |
+| [TEAM_DEMO_TEST_RUNBOOK.md](TEAM_DEMO_TEST_RUNBOOK.md) | Detailed reference: 44 numbered sections covering the same 37 test cases — exact requests, scopes, expected results, and edge cases. |
+| [TEAM_DEMO_RESULTS_TEMPLATE.csv](TEAM_DEMO_RESULTS_TEMPLATE.csv) | Blank results sheet: C1–C5, S1–S5, M1–M5, L1–L5, G1–G17 (37 rows) — record actual results here, never pre-fill. |
 
 ## Where to start
 
-1. **Setup path:** follow runbook sections 01–07 (PowerShell venv +
-   install, isolated test DB via `RUNTIME_DB_PATH`, live-LLM
-   configuration, what counts as live-extraction evidence).
-2. **Run the datasets:** sections 08–27 — five explicit steps each
-   (exact live request, scope confirmation, steward refusal + approval,
-   render + five exports, repeat request + REUSE).
-3. **Shared checks:** sections 28–44 (export inspection, Power BI
-   handoff, saved plans, REUSE boundaries, refusal/rejection paths,
-   offline vs fallback, estate proposals, troubleshooting, completion
-   record).
-4. **Record results** in the CSV template; keep evidence files per
-   dataset.
+1. **Snowflake credentials first:** follow the README's
+   [Snowflake setup for testers](../README.md#snowflake-setup-for-testers)
+   — enter the provider env vars and your PAT in a private PowerShell
+   *before* launching (`--api-port 8025 --ui-port 8525`, UI at
+   <http://127.0.0.1:8525>). Cloning gives no credential.
+2. **Walk the easy guide:** sections 01–07 (setup + reading the UI),
+   then C1–C5, S1–S5, M1–M5, L1–L5 per dataset, then shared checks
+   G1–G17.
+3. **Record results** in the CSV template; keep evidence per dataset.
 
-To regenerate the deck after runbook edits:
-`python docs/build_demo_slides.py` rewrites the **HTML and PPTX** only
-(requires python-pptx). The PDF is produced separately: open
-`DEMO_SLIDES.html` in a browser and use Print → Save as PDF
-(landscape, one page per section).
+To regenerate the deck after editing `DEMO_WALKTHROUGH.md`:
+`python docs/build_demo_slides.py` rewrites the **HTML and PPTX**
+(requires python-pptx). The PDF is produced separately — open
+`DEMO_SLIDES.html` in a browser and Print → Save as PDF.

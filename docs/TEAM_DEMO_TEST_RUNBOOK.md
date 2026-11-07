@@ -1,62 +1,74 @@
 # Smart Librarian: complete team demo test runbook
 
-This is a manual test plan, not a record of tests executed today. Run every
-dataset chapter, then the shared checks. Record actual results separately.
-The four datasets are Commercial, Supply, Market Access, and Launch from
-the official synthetic challenge builder pack, not real Bayer performance.
-Each numbered section is a slide in the team testing deck.
+This is the detailed reference: 44 numbered sections covering the same
+37 test cases as the easy step-by-step guide `DEMO_WALKTHROUGH.md` (the
+source of the generated deck). It is a manual test plan, not a record
+of tests executed today - record actual results separately. The four datasets
+are Commercial, Supply, Market Access, and Launch from the official
+synthetic challenge builder pack, not real Bayer performance.
 
-## 01 | Mission: test the whole journey
-- Test all four datasets with live LLM extraction, explicit form confirmation, ownership, approval, frozen reports, downloads, saved plans, and REUSE.
-- Also exercise steward refusal, rejection, scope refusal, unsupported intake, and honest offline fallback.
-- The UI, API, and exported reports run locally. Optional LLM inference is remote.
-- These are simulated actors and approvals, not real authentication. Never expose the API remotely.
+## 01 | The whole demo in one picture
+- Do: Follow this path: ask a question -> check the form -> choose an owner -> create a plan -> get approval -> render -> download -> repeat.
+- See: A written request becomes a governed, frozen report. Repeating the same approved scope can return the existing plan: REUSE.
+- Proves: The demo joins natural-language intake, human decisions, source-backed reports, and reuse.
+- Remember: The business data and roles are synthetic. The LLM is real, but it does not calculate the report or approve anything.
 
-## 02 | Run order and responsibilities
-- One tester drives the browser; a second records evidence. The approver in the UI is still a simulated actor.
-- Run setup first, Commercial C1-C5, Supply S1-S5, Market Access M1-M5, Launch L1-L5, then shared checks G1-G14.
-- Use one fresh test database per tester or coordinated run. Do not let concurrent testers approve the same scope unless testing the race scenario.
-- Keep a record per case: date, tester, dataset, model/provider, extraction mode, original plan ID, reused plan ID, revision/spec hash, actual result, evidence path, and notes.
-
-## 03 | First-time setup in PowerShell
-- Open the repository folder in File Explorer; type powershell in its address bar and press Enter. Python 3.11 or later is required.
+## 02 | Install once on each tester's computer
+- Do: In PowerShell, clone the project and install it. If you already have this clone, use its folder and skip the first two commands.
 ```powershell
+git clone https://github.com/Princeadhi123/Since-AI-Hackathon.git
+cd Since-AI-Hackathon
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[ui,llm,dev]"
 ```
-- Installation needs internet. Calling the venv Python directly avoids activation and execution-policy changes.
-- The workbook and frozen evidence ship with the repo. Do not edit or regenerate them. Do not overwrite the existing .env.
+- See: Installation finishes without an error. Your project now has a .venv folder.
+- Proves: This computer has the software needed to run the demo; this is not yet an LLM test.
+- Remember: Python 3.11+ and internet are required. Do not edit the source workbook or frozen evidence files.
 
-## 04 | Choose fresh approval or existing-state REUSE
-- Existing session: try UI http://127.0.0.1:8501 and API http://127.0.0.1:8000. Reuse it for existing-state testing if it responds.
-- For every fresh approval step, launch a separate test run with a new database and free ports. Run these commands in the same PowerShell:
+## 03 | Connect Snowflake before starting the app
+- Do: Obtain a valid, scoped Snowflake PAT privately. Your Snowflake user must allow this computer's public outgoing IP. Enter these commands in the PowerShell you will launch from.
+```powershell
+$env:LLM_PROVIDER = 'snowflake'
+$env:SNOWFLAKE_ACCOUNT_HOST = 'TNRTNCL-SX96827.snowflakecomputing.com'
+$env:LLM_MODEL = 'claude-sonnet-4-6'
+$cortexToken = Read-Host 'Snowflake PAT' -AsSecureString
+$env:SNOWFLAKE_PAT = [System.Net.NetworkCredential]::new('', $cortexToken).Password
+```
+- See: The token prompt hides what you paste. The commands finish without printing the token.
+- Proves: You supplied local configuration. A successful live request is still needed to prove access.
+- Remember: Same Wi-Fi is not a credential. Never share the PAT in Git, chat, screenshots, or slides. No model deployment is needed.
+
+## 04 | Choose a clean test or use existing plans
+- Do: For every fresh approval check, run the commands below in that configured PowerShell. If 8025/8525 are busy, change BOTH ports, for example to 8026/8526.
 ```powershell
 $env:RUNTIME_DB_PATH = "var/team-demo-$([guid]::NewGuid().ToString('N')).sqlite"
-.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8021 --ui-port 8521
+.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8025 --ui-port 8525
 ```
-- This creates a new DB, preserving var/runtime.sqlite. Record the chosen DB path privately before stopping. Never put the DB under data/.
-- If either port is busy, choose both new ports, e.g. 8022/8522. Never kill unknown processes. Do not use --background for this isolated test recipe.
+- See: API ready and UI ready, with the URLs to open. A new database under var/ preserves your existing plans.
+- Proves: A clean run lets you exercise pending -> approval -> render instead of immediately getting REUSE.
+- Remember: For existing-state REUSE, skip the fresh launch and use your verified running Snowflake instance. Keep the terminal open; do not use --background.
 
-## 05 | Open the right application
-- Wait for API ready and UI ready in the launching terminal; keep that terminal open.
-- Fresh-run UI: http://127.0.0.1:8521. API health: http://127.0.0.1:8021/api/health. Interactive API docs: http://127.0.0.1:8021/docs.
-- Sidebar Simulated requester identity: DEMO-CHALLENGE-REQUESTER. Workspace: Builder pack reports.
-- Confirm the synthetic challenge banner and the four Source domain choices. A public/legacy app is the wrong mode for these tests.
+## 05 | Open the correct demo, not the old preview
+- Do: Open the UI URL printed by your launcher: normally http://127.0.0.1:8525. In a SECOND PowerShell, check the API below; change its port if you chose another pair.
+```powershell
+Invoke-RestMethod 'http://127.0.0.1:8025/api/capabilities' |
+  Select-Object provider, model, configured
+```
+- See: snowflake / claude-sonnet-4-6 / True. In the UI, choose Builder pack reports and keep DEMO-CHALLENGE-REQUESTER in the sidebar.
+- Proves: You reached the intended backend and it has a credential. This read-only check does not prove authentication.
+- Remember: An old 8501/8000 instance may still use Aitta. Use the new printed URL, not an old preview. Do not expose this unauthenticated demo publicly.
 
-## 06 | Configure live LLM without sharing secrets
-- Use the existing approved provider configuration; ask your project owner for access if missing. Never paste a token into slides, chat, request text, screenshots, or test results.
-- Aitta configuration names: LLM_PROVIDER=aitta, LLM_MODEL=openai/gpt-oss-120b, AITTA_API_TOKEN. The token value stays private.
-- An OpenAI configuration instead uses LLM_PROVIDER=openai and OPENAI_API_KEY with an appropriate configured model. Do not mix credentials.
-- Process environment overrides .env; launch the app after configuration. GET /api/capabilities exposes provider configuration status without the token, but does not prove inference works.
-- Internet and a valid credential are required for live extraction. Request text and catalog metadata are sent remotely, not source business figures. Never enter confidential text.
+## 06 | Read the status: what happens next?
+- Do: Use the status to choose your next click. llm = extraction succeeded; pending = waiting; approved = ready to render; rendered = frozen report available; REUSE = existing approved scope found.
+- See: Pending: choose an approver. Approved: click Render frozen report. Rendered: inspect and download. REUSE: check the returned plan ID and existing result.
+- Proves: Extraction, approval, rendering, and reuse are different steps, not one automatic AI action.
+- Remember: REUSE is not a failure. An approved-but-not-rendered reused plan still needs rendering; a rendered reused plan already has a frozen result.
 
-## 07 | What counts as live extraction evidence
-- For each dataset, tick Send request text + catalog metadata to the LLM, enter the exact request below, then click Extract intent.
-- Capture the UI caption Selected mode: live LLM | last extraction: llm. A checked box alone is not evidence.
-- Compare the extracted form to the expected scope before editing. Record missing/wrong fields as extraction defects; record manual corrections separately.
-- Do not press Prefill during the live extraction test: it replaces extraction state and is not proof that the LLM understood the request.
-- offline_fallback_after_llm_unavailable is an honest fallback, NOT a live-LLM pass. Record live testing as blocked and test fallback separately.
-- Extraction itself must not create or approve a plan. Existing plan state from an earlier action is not a new extraction result.
+## 07 | Know when a test really passed
+- Do: For each case, save the request, unedited form, status, plan ID, and a screenshot. Compare what you actually see with this guide before correcting anything.
+- See: last extraction: llm is a live result. offline_fallback_after_llm_unavailable means the live case is BLOCKED, not passed.
+- Proves: Your evidence distinguishes real model output from offline parsing, manual edits, and steps you did not run.
+- Remember: A checkbox alone proves nothing. Do not press Prefill to make a live extraction look correct. Use the blank team results CSV.
 
 ## 08 | C1: Commercial - exact LLM request
 - Workspace Builder pack reports; Source domain Commercial; requester DEMO-CHALLENGE-REQUESTER.
@@ -318,7 +330,7 @@ $env:PYTHONPATH = 'src'
 ## 43 | G16: Troubleshooting without losing test evidence
 - Busy ports: reuse the correct instance or choose a new API/UI pair. Changing ports alone does NOT create a fresh DB.
 - Module errors: use the SAME venv Python for pip and launcher. Wrong UI: launch --mode challenge, not public/legacy.
-- API unreachable: inspect launching terminal and artifacts/logs/api-8021.log / ui-8521.log (adjust port suffixes).
+- API unreachable: inspect launching terminal and artifacts/logs/api-8025.log / ui-8525.log (adjust port suffixes).
 - LLM unavailable: verify approved credentials/provider/model privately, capture warning and mark live tests blocked; never publish token contents.
 - Unexpected REUSE: compare original scope, owner, hash, and source fingerprint; fresh pending approval needs an unused scope/new isolated DB, not database deletion.
 - Lost current UI plan after identity change: restore requester and reopen Saved plans; do not recreate blindly.
