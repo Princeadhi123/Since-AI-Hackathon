@@ -155,6 +155,22 @@ are sent to the model; catalog metadata contains no source business figures,
 but your request text may contain confidential information - do not enter
 secrets. Without a key the action fails safely and the session is retained.
 
+The selected demo model is `openai/gpt-oss-120b`, served through **CSC Aitta**
+(not the paid OpenAI API). Configure it in your local `.env`:
+
+```dotenv
+LLM_PROVIDER=aitta
+LLM_MODEL=openai/gpt-oss-120b
+AITTA_API_TOKEN=<your Aitta token>
+```
+
+See [Aitta setup](docs/AITTA_SETUP.md) for access instructions and
+[the model comparison](docs/AITTA_MODEL_COMPARISON.md) for the recorded
+four-model results and selected-model workflow checks. This is a small,
+task-specific comparison, not a general model ranking or latency guarantee.
+The LLM extracts intent only; calculations, permission checks and approvals
+remain deterministic (the demo identities and approvals are simulated).
+
 Optional installs for other environments (not executed here):
 
 ```powershell
