@@ -1,296 +1,252 @@
 # Smart Librarian
 
-A governed analytics assistant over curated data catalogs. The product goal is
-to let users ask business questions, clarify intent, and produce governed,
-approvable report specifications over trusted catalog data - not a chatbot
-that guesses SQL.
+A locally governed analytics prototype for Bayer's "Build Less, Build
+Better" challenge. Users phrase business requests in natural language,
+get explicit intent extraction, confirm a guided scope, route it through
+simulated approval, and receive fingerprint-pinned frozen reports - no
+SQL guessing, no silent inference.
+
+Data basis: the official SinceAI synthetic builder pack - four report
+domains plus a source estate. Nothing here is real Bayer performance or
+internal data.
 
 ## Status
 
-Working today (local loopback demo):
+Implemented and locally verified for the four scenarios below:
 
-- Challenge mode (the `run_demo.py` default): `create_challenge_app()`
-  mounts `/api/challenge/*` over the official synthetic builder pack -
-  four source domains (commercial monthly, market access snapshot,
-  supply snapshot, launch events), fixed simulated identities
-  (requester/FI/approver/steward), governed plan persistence with
-  approval + frozen source-row renders, estate lifecycle proposals
-  (approved-but-never-executed), and HTML/CSV/ZIP/Power Query kit/PBIP
-  exports. The workbook is read-only; plans live in the runtime SQLite.
-- FastAPI service with session, chat, guided intent confirmation, simulated
-  approval and deterministic report rendering. The standalone `create_app`
-  module default is **real-data-only**: only the governed
-  **Bayer public sales** domain (`public_sales`) mounts, serving published
-  actual annual, quarterly and half-year figures from the frozen dataset
-  `data/public_financials_v2/dataset.json` - no synthetic catalogs load.
-  Passing `include_synthetic=True` or an explicit `demo_dir` selects the
-  legacy mode: three synthetic domains (Sales `data/demo_v1`, Logistics
-  `data/demo_logistics_v1`, Quality `data/demo_quality_v1`) plus the old
-  four-product annual public domain from `data/evidence/`. The public
-  domain never sums across reporting periods and uses a separate simulated
-  public-data approver.
-- Streamlit UI that talks to the API over HTTP only. Real-data-only mode
-  opens a dedicated UI (Report builder, Performance explorer, Saved
-  reports, Sources & coverage); legacy mode keeps the classic UI with
-  domain + identity pickers, scenario prefills, approval panel bound to a
-  separate simulated governance actor, per-domain asset library and
-  HTML/ZIP report downloads.
-- Read-only evidence API (`GET /api/evidence/{challenge|public}`) serving
-  the frozen files in `data/evidence/` (legacy and challenge modes; the
-  real-data-only public API returns 404 for it), plus - in legacy
-  mode - sidebar workspaces that browse them: **Challenge estate** (the
-  official synthetic builder-pack estate), **Public financials** (the old
-  four-product annual file) and **Deployment readiness**.
-- Power BI import kits (`reporting/powerbi.py`): ZIP bundles of frozen
-  values - CSVs, typed Power Query (M) scripts, a theme and provenance -
-  for manual import. Not a PBIP/PBIX project; nothing publishes to the
-  Power BI service. Challenge mode additionally offers a generated
-  offline PBIP project export (`reporting/challenge_pbip.py`, schema-
-  validated PBIR + embedded TMSL import model); templates were checked
-  with Power BI Desktop 2.159.1231.0 (project opens and the embedded
-  frozen model renders; validate in your target version). No service
-  publish exists.
-- Deterministic offline intent parser plus an opt-in LLM extraction
-  adapter - OpenAI or CSC/LUMI Aitta via `LLM_PROVIDER` (never called
-  unless a request sets `use_llm=true` and that provider's own credential
-  is configured; keys are never routed to the wrong endpoint. The live
-  provider path is not continuously verified).
-- Runtime sessions/approvals/audit/generated-report registry in
-  `var/runtime.sqlite`, separate from the read-only fixtures. Approvals are
-  recorded against a separate simulated approver actor, bind to the spec
-  hash and re-verify the catalog fingerprint; catalog changes invalidate
-  prior approvals. Successful renders of approved build/change proposals
-  publish deterministic `GEN-` assets that later sessions reuse.
-- Self-contained HTML report and CSV/JSON ZIP bundle export
-  (`reporting/exports.py`) - no external scripts, fonts or PBIP.
+- Four governed report domains - commercial monthly, supply snapshot,
+  market access snapshot, launch events - plus estate lifecycle
+  proposals (approved but never executed).
+- Live LLM intent extraction (opt-in, CSC Aitta) followed by
+  deterministic validation, an authoritative guided form, simulated
+  approval, frozen source-row renders, and HTML/CSV/ZIP/Power Query
+  kit/PBIP exports. The LLM only proposes intent; it never computes
+  values or bypasses approval. It does not claim general dashboard or
+  report equivalence.
 
-Not implemented yet: PBIX binary export, Power BI service publishing
-(the import kit is a manual CSV+M path only; the challenge PBIP ZIP is
-an offline generated project checked with Power BI Desktop
-2.159.1231.0 - opens and renders locally, not service-verified),
-real authentication, production authorization, role isolation, a
-published report destination, asset lifecycle retirement.
+## Setup (fresh clone)
 
-## Layout
-
-```
-.
-|-- prepare_catalog.py        # Stable entry point: workbook -> data/prepared snapshot
-|-- create_demo_data.py       # Stable entry point: -> data/demo_v1 fixture
-|-- run_demo.py               # Starts API (127.0.0.1:8000) + UI (127.0.0.1:8501)
-|-- pyproject.toml
-|-- .env.example              # Placeholders for the whitelisted .env loader
-|-- create_operational_data.py# -> data/demo_logistics_v1 + demo_quality_v1
-|-- apps/
-|   `-- streamlit_app.py      # Streamlit UI (HTTP client of the API only)
-|-- src/smart_librarian/
-|   |-- settings.py           # Env/.env loading, paths, provider status
-|   |-- api/app.py            # FastAPI app: per-domain services + routes
-|   |-- catalog/store.py      # Read-only fixture catalog + runtime overlay
-|   |-- domain/parser.py      # Conservative offline intent parser
-|   |-- domain/decision.py    # Deterministic gates + spec/hash building
-|   |-- domain/governance.py  # Simulated approver/steward actor registry
-|   |-- domain/operational_contracts.py  # Logistics/quality contracts
-|   |-- domain/executable_contract.py    # Catalog-vs-code contract check
-|   |-- workflow/service.py   # Session state machine + approval + render
-|   |-- llm/client.py         # Opt-in OpenAI adapter + intent_prompt.txt
-|   |-- reporting/calculations.py  # Fixed sales calculations (lead-authored)
-|   |-- reporting/operational.py     # Fixed operational calculations
-|   |-- reporting/exports.py       # HTML report + ZIP bundle artifacts
-|   |-- reporting/powerbi.py       # Power BI import kits (CSV + M + theme)
-|   |-- reporting/public_financials.py # Frozen v2 period calculations
-|   |-- catalog/public_financials.py   # v2 snapshot catalog adapter
-|   |-- domain/public_financials.py    # v2 contract/scope/evidence/parse
-|   |-- ui/demo.py                # Real-data-only Streamlit UI
-|   |-- evidence.py             # Read-only frozen evidence loader
-|   `-- persistence/store.py  # Runtime SQLite sessions/approvals/assets
-|-- tests/
-|   |-- fixtures/demo_scenarios.json   # Acceptance cases (never retrieval input)
-|   |-- test_end_to_end.py    # API acceptance contract (lead-authored)
-|   |-- test_calculations.py  # Calculation contract (lead-authored)
-|   |-- test_offline_parser.py + test_structure.py
-|-- docs/                     # ARCHITECTURE.md, DATA_PLAN.md, DEMO_DATA_README.md
-|-- data/
-|   |-- <source workbook + original notes/media>
-|   |-- evidence/             # Frozen challenge estate + public financials
-|   `-- demo_v1/              # Independent fictional fixture (read-only)
-|-- var/                      # Runtime SQLite (git-ignored, auto-created)
-`-- artifacts/                # Local logs + validation output (git-ignored)
-```
-
-## Data separation
-
-- **Source catalog**: the original workbook under `data/` (unchanged). Its
-  generated `data/prepared/` export snapshot was removed as redundant; run
-  `prepare_catalog.py` to regenerate it if needed.
-- **Demo fixture**: entirely fictional data in `data/demo_v1/` (sales) plus
-  `data/demo_logistics_v1/` and `data/demo_quality_v1/` generated once by
-  `create_operational_data.py`; all mounted read-only. Fingerprint = SHA-256
-  over `catalog.json`, `demo.sqlite`, `products.csv`, `markets.csv` and
-  `calendar.csv`, captured once at load; any later drift fails closed (409)
-  until the service is restarted.
-- **Public financials v2 dataset**: `data/public_financials_v2/dataset.json`
-  - the frozen, reviewed snapshot powering the default real-data-only demo
-  (150 facts, 15 products, 10 reporting periods, 3 official sources).
-  Retained publisher snapshots under `data/public_financials_v2/sources/`
-  are git-ignored - no redistribution license is asserted. The preparation
-  pipeline refuses to overwrite an existing dataset.
-- **Evidence files**: `data/evidence/challenge_estate.json` (official
-  SinceAI builder-pack estate - synthetic metadata, source rows preserved
-  without repair) and `data/evidence/public_financials.json` (selected
-  published actual global product sales, EUR million). Read-only, served
-  verbatim by the API. In default real-data-only mode the challenge estate
-  is not exposed (404); in legacy mode the governed `public_sales` domain
-  reads only the public financials evidence through a fixed annual adapter
-  and the challenge estate is browse-only - the two datasets are never
-  combined. Publisher HTML/XLSX snapshots retained
-  under `data/evidence/` are git-ignored - no redistribution license is
-  asserted.
-- **Acceptance scenarios**: `tests/fixtures/demo_scenarios.json` - used only to
-  check expected outcomes, never as retrieval input.
-- **Runtime output**: `var/runtime.sqlite` (sessions/approvals/audit) and
-  `artifacts/` (logs, validation evidence) - both git-ignored.
-
-The two root generation scripts deliberately stay at the workspace root as
-stable entry points to preserve their path assumptions and historical source
-hashes. **Do not re-run `create_demo_data.py`** - it fails if its output
-directory already exists.
-
-## Run the demo
-
-All dependencies for the local slice are already installed in this
-environment; no install or network is needed for offline mode:
+Requires Python >= 3.11 (see `pyproject.toml`). Windows is needed only
+for the `--background` launcher option and Power BI Desktop checks;
+the app itself is platform-neutral.
 
 ```powershell
-python run_demo.py                 # challenge builder-pack demo (default)
-python run_demo.py --mode public   # real-data-only public sales demo
-python run_demo.py --mode legacy   # synthetic multi-domain + public UI
+git clone https://github.com/Princeadhi123/Since-AI-Hackathon.git
+cd Since-AI-Hackathon
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[ui,llm,dev]"
 ```
 
-Then open http://127.0.0.1:8501. The launcher refuses to start if a port is
-already in use and Ctrl+C stops only the children it spawned. Logs land in
-`artifacts/logs/`.
+Commands below use `.\.venv\Scripts\python.exe` explicitly so no
+PowerShell activation step (or execution-policy change) is needed.
+Installation requires network access; the app itself then runs fully
+locally - no provider network is used unless you opt into LLM
+extraction.
 
-Equivalent manual commands, in two shell windows:
+Power BI Desktop is optional and only needed to open PBIP exports;
+project (PBIP) support is required and templates were checked with
+version 2.159.1231.0 - validate in your target version.
 
-```powershell
-# Window 1 - API
-$env:PYTHONPATH = 'src'
-python -m uvicorn smart_librarian.api.app:app --host 127.0.0.1 --port 8000
+The source workbook `data/Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx`
+(read-only) and all data fixtures are tracked in the repo - no
+regeneration step is needed. Do not edit the workbook, the frozen
+evidence JSONs under `data/evidence/`, or place a runtime DB under
+`data/` (challenge mode refuses to run with the runtime DB inside
+`data/`).
 
-# Window 2 - UI
-$env:PYTHONPATH = 'src'
-python -m streamlit run apps/streamlit_app.py --server.address 127.0.0.1 --server.port 8501
-```
+## Configuration (.env)
 
-## Demo walkthrough
+This repository currently tracks a `.env` with a **temporary shared
+event credential** (CSC Aitta) committed deliberately for the hackathon
+- do not print or copy the real value. Recommendations:
 
-The default demo is **real-data-only**: it serves 15 published products and
-product families across ten frozen reporting periods - FY 2024 and FY 2025,
-Q4 2024, Q4 2025, Q1 2025, Q1 2026, Q2 2025, Q2 2026, H1 2025 and H1 2026 -
-sourced from three official publisher snapshots. Global figures only, EUR
-million; no country, monthly or forecast data exists. Approvals, the
-approver identity, endorsement and the asset registry are simulated.
+- Prefer your own credential via process environment (process env always
+  wins over `.env`).
+- The shared event token may expire, be revoked, or hit rate limits;
+  rotate it after the event.
+- `.env.example` contains placeholders only - use it as a reference if
+  `.env` is missing; do not overwrite the tracked `.env` blindly.
+- Only the whitelisted keys in `src/smart_librarian/settings.py` are
+  read; everything else in `.env` is ignored. The runtime DB defaults to
+  `var/runtime.sqlite`.
 
-The sidebar offers four workspaces:
-
-1. **Report builder** - starter buttons prefill the guided form (they never
-   approve anything): `Nubeqa annual performance` (FY 2024/2025),
-   `Compare all products` (annual), `Q2 year-over-year comparison`
-   (Q2 2025 vs Q2 2026). Or type a request and Send. Select products, a
-   period type (Annual/Quarterly/Half-year) and reporting periods, then
-   **Confirm intent**. Extracted out-of-coverage values stay visible and
-   require an explicit replace acknowledgment - nothing is silently
-   reduced. Approve with the separate simulated public approver, then
-   **Open report preview** for charts, the readable table (source rows in
-   an expander) and CSV/HTML/ZIP/Power BI kit downloads.
-2. **Performance explorer** - browse the frozen published rows by period
-   type, product and reporting period; values are shown verbatim, never
-   aggregated or derived.
-3. **Saved reports** - the local registry of generated `GEN-...` assets;
-   **Open / reuse** resumes a governed session (no auto-render).
-4. **Sources & coverage** - the three official source URLs, SHA-256 hashes,
-   retrieval timestamps, snapshot scope and what the source cannot answer.
-
-The legacy synthetic multi-domain UI and its evidence workspaces
-(Challenge estate, Public financials legacy file, Deployment readiness)
-are **not exposed by default**; they appear only when the API runs in
-legacy mode (`create_app(include_synthetic=True)` or an explicit
-`demo_dir`). In legacy mode the walkthrough is: pick Sales/Logistics/
-Quality, chat to prefill, confirm, approve with the simulated approver and
-preview.
-
-See `docs/CHALLENGE_DEMO.md` for the challenge-mode runbook and `docs/DEMO_RUNBOOK.md` for the full launch checklist and
-`docs/DEPLOYMENT.md` for the proposed (unbuilt) production shape.
-
-Optional LLM extraction: set `LLM_PROVIDER` plus the matching credential
-(`OPENAI_API_KEY` or `AITTA_API_TOKEN`) in the environment or a local
-`.env` (never commit tokens to `.env.example` or any tracked file) - see
-`docs/AITTA_SETUP.md` - then check
-the opt-in box in the sidebar. The request text plus catalog metadata choices
-are sent to the model; catalog metadata contains no source business figures,
-but your request text may contain confidential information - do not enter
-secrets. Without a key the action fails safely and the session is retained.
-
-The selected demo model is `openai/gpt-oss-120b`, served through **CSC Aitta**
-(not the paid OpenAI API). Configure it in your local `.env`:
+Typical contents (placeholders):
 
 ```dotenv
 LLM_PROVIDER=aitta
 LLM_MODEL=openai/gpt-oss-120b
-AITTA_API_TOKEN=<your Aitta token>
+AITTA_API_TOKEN=<your-token>
 ```
 
-See [Aitta setup](docs/AITTA_SETUP.md) for access instructions and
-[the model comparison](docs/AITTA_MODEL_COMPARISON.md) for the recorded
-four-model results and selected-model workflow checks. This is a small,
-task-specific comparison, not a general model ranking or latency guarantee.
-The LLM extracts intent only; calculations, permission checks and approvals
-remain deterministic (the demo identities and approvals are simulated).
+For OpenAI instead set `LLM_PROVIDER=openai`, `LLM_MODEL=gpt-4.1-mini`
+and `OPENAI_API_KEY`; use only the matching provider credential. See
+[docs/AITTA_SETUP.md](docs/AITTA_SETUP.md) for Aitta access. The app and
+any Power BI project run locally, but LLM inference is a **remote** call
+to Aitta (or OpenAI when selected) - it needs internet and a valid
+credential. The opt-in is the
+"Send request text + catalog metadata to the LLM" checkbox on the
+challenge Builder page; the request text and catalog metadata (no source
+business figures) are sent - never enter secrets or confidential text.
+If the provider is unavailable the UI explicitly shows the offline
+fallback warning - it never claims live-LLM success.
 
-Optional installs for other environments (not executed here):
+## Run the demo
 
 ```powershell
-pip install -e ".[ui,llm,dev]"
+.\.venv\Scripts\python.exe run_demo.py --mode challenge --api-port 8021 --ui-port 8521
 ```
+
+Open http://127.0.0.1:8521 (UI). The API base is
+http://127.0.0.1:8021 with interactive docs at
+http://127.0.0.1:8021/docs. Loopback only - each user runs their own local
+instance; do not expose the unauthenticated API remotely.
+
+- Foreground mode keeps the terminal open; Ctrl+C stops only the
+  children it spawned. Busy ports? Pick different `--api-port`/
+  `--ui-port` values - the launcher refuses to start rather than kill an
+  unknown process.
+- Windows `--background` registers a unique current-user scheduled task
+  running `pythonw.exe` (no console) with `CREATE_NO_WINDOW` children.
+  The printed task name stops it: `schtasks /End /TN <task-name>`. It
+  does not promise survival across logoff/reboot or soak-level uptime,
+  and shell-only environment variables are not forwarded to the task
+  (`.env` is still loaded). Logs land in `artifacts/logs/`, plans in
+  `var/runtime.sqlite`.
+- Bare `python run_demo.py` also defaults to challenge mode but on ports
+  8000/8501 - `--api-port`/`--ui-port` pick others.
+
+Mode table:
+
+| Mode | What it serves |
+| --- | --- |
+| `challenge` (launcher default) | Official synthetic builder pack: 4 domains, estate, challenge API/UI |
+| `public` | Real-data-only: 15 published products/families, 10 reporting periods, global EUR million |
+| `legacy` | 3 fictional synthetic domains + old 4-product annual public view |
+
+Note: the raw module `smart_librarian.api.app:app` defaults to the
+**public** real-data-only app - different from the launcher's challenge
+default. Manual uvicorn for challenge must use
+`--factory smart_librarian.api.app:create_challenge_app`.
+
+## Challenge walkthrough (end to end)
+
+1. Keep the sidebar identity on `DEMO-CHALLENGE-REQUESTER`; pick a
+   domain in **Builder pack reports**.
+2. Check the LLM opt-in checkbox, enter request text, click **Extract
+   intent**. Inspect the extraction - then explicitly confirm/adjust the
+   guided form (products/markets/source fields/months; nothing is
+   inferred silently).
+3. Select an accountable **active owner** (e.g. `OWN-001` - no default
+   is chosen) and click **Create plan** - status `pending`. If an
+   equivalent approved scope already exists the plan is **REUSE**d
+   immediately instead.
+4. In the **Approval (separate actor)** block on the same page choose
+   `DEMO-CHALLENGE-APPROVER` and approve - do not switch the sidebar
+   identity (that clears the plan). Then **Render frozen report**,
+   preview, and download.
+5. Saved plans persist in the local `var/runtime.sqlite` (git-ignored,
+   not cloned).
+
+Exact verified requests:
+
+| Domain | Request text |
+| --- | --- |
+| commercial | `Show monthly Nubeqa net sales and sales forecast in Germany for January through March 2026.` |
+| supply | `Show a current snapshot of Nubeqa in Germany: on-time in-full, inventory in weeks, and supply risk status.` |
+| market_access | `Show the current market access snapshot for Nubeqa in Germany: coverage percentage and reimbursement status.` |
+| launch | `Show Nubeqa launch milestones in Japan in January 2026, including milestone ID, milestone type, and status.` |
+
+Guardrails worth showing: the estate flow (e.g. asset `AST-0002`,
+action `migrate`) approves a proposal that is **not executed**; an FI
+identity attempting a non-FI scope is refused (403); a steward cannot
+approve a pending plan. Reuse/duplicate guardrails reuse approved scope
+rather than re-rendering - they do not claim source-estate reports are
+replaceable duplicates.
+
+## Power BI export
+
+Five formats: HTML, CSV, ZIP bundle, Power Query kit (CSV + M script +
+theme for manual import), and PBIP project ZIP (generated offline PBIR
++ embedded TMSL import model with native charts plus Source Evidence
+and Ownership & Evidence pages - different from the manual kit).
+
+Download the PBIP ZIP, extract the full tree keeping
+`.Report`/`.SemanticModel` beside `GovernedReport.pbip`, open it in
+Power BI Desktop, and run **Refresh on first load (mandatory)** - it
+loads the embedded frozen snapshot into the model, not new business
+data. There is no PBIX export, no service publish, no live connection,
+no scheduled refresh. Chart measures return BLANK on ambiguous
+multi-row contexts and are never summed or averaged; source values stay
+in native units (snapshots show no invented time trends).
+
+## Verified state (as of 2026-11-07)
+
+- Four requests above driven through a real browser with live LLM
+  extraction: pending plan, steward refusal, separate approver, frozen
+  render, five real downloads, identical-resubmit REUSE - per domain
+  (commercial approval/render was captured in an earlier partial pass;
+  the final pass reused it; the other three ran the full fresh pending
+  flow).
+  `/extract` responses were captured via direct API calls with identical
+  payloads (the UI calls the API server-side); UI-side mode caption and
+  form prefill were asserted separately - the API captures are not the
+  UI's own response objects.
+- Power BI Desktop: all four new PBIP projects opened, actual Refresh
+  invoked on each, and all three pages screenshotted and reviewed.
+- Tests: full suite of 347 tests passed on an earlier code state;
+  26 focused tests (launcher + mocked offline-fallback UI) pass on the
+  final code.
+- Evidence under `artifacts/logs/` (`verification-final-e2e-v2.txt`,
+  `launcher-final-narrow.txt`, `pbi-accept-gate.log`) and
+  `artifacts/downloads/team_acceptance_20261107_072528/` is local and
+  git-ignored - not part of a fresh clone.
+- Live provider behavior is not part of the automated suite; the
+  provider-outage path is covered by a mocked fallback test. These are
+  finite checks, not a soak test or a general accuracy guarantee.
 
 ## Tests
 
 ```powershell
 $env:PYTHONPATH = 'src'
-python -m unittest discover -s tests -p "test_*.py" -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 
-## Limitations
+Focused suites: `test_challenge.py`, `test_pbip_dashboard.py`,
+`test_launcher_config.py`.
 
-- The default launcher (`run_demo.py --mode challenge`) serves the four
-  official synthetic builder-pack report domains (commercial monthly,
-  market-access snapshots, supply snapshots, launch events) with the
-  challenge estate view. `--mode public` serves published actual figures
-  for 15 products and product families across 10 reporting periods
-  (annual, quarterly, half-year; global, EUR million) from
-  `data/public_financials_v2/` - a separate flow that is never joined to
-  the synthetic pack. `--mode legacy` mounts the fixture domains (Sales,
-  Logistics, Quality) and the older four-product public financials view.
-  Identities, certification,
-  governance actors and approvals are simulated role-play, not security
-  controls - there is no authentication, authorization or role isolation,
-  and nothing here is Bayer certification or internal data.
-- The offline parser is keyword-based, not general language understanding;
-  it may miss unfamiliar requirements - always inspect the exact guided form
-  before confirming.
-- Report output is JSON, charts, a standalone HTML file, a CSV/JSON ZIP
-  bundle and a Power BI import kit (CSV + M scripts + theme). Challenge
-  mode additionally exports a generated offline PBIP project ZIP; there
-  is no PBIX export or published destination.
-- The evidence workspaces are read-only views over frozen files; the
-  estate is synthetic challenge metadata (migration backlog entries are
-  supplied scenario inputs, not recommendations or certifications) and
-  the public figures cover four products and two fiscal years only - no
-  monthly, country or forecast questions can be answered from them.
-- The Power BI import kits were verified structurally and via AppTest/
-  browser checks; the manual CSV+Power Query import steps in Desktop are
-  documented but not executed here. The generated challenge PBIP project
-  was opened and checked locally with Power BI Desktop 2.159.1231.0.
-- The optional LLM path is a thin adapter; its live provider behavior is not
-  part of the automated test suite.
+## Layout
+
+```
+.
+|-- run_demo.py               # Launcher: API + UI, foreground or --background
+|-- pyproject.toml            # Python >= 3.11, extras: ui, llm, dev
+|-- .env / .env.example       # Whitelisted config keys (tracked .env = event cred)
+|-- apps/streamlit_app.py     # Streamlit UI (HTTP client of the API only)
+|-- src/smart_librarian/
+|   |-- challenge.py          # Read-only workbook contracts/source engine
+|   |-- api/challenge.py      # /api/challenge/* router
+|   |-- workflow/challenge.py # Extract/plan/approve/render service
+|   |-- ui/challenge.py       # Challenge Streamlit workspaces
+|   |-- reporting/challenge_pbip.py + challenge_pbip_dashboard.py
+|   |-- persistence/store.py  # Runtime SQLite: plans, audit, reports
+|   `-- settings.py           # Env/.env whitelisting, paths, provider status
+|-- docs/                     # ARCHITECTURE.md, CHALLENGE_DEMO.md,
+|                             # AITTA_SETUP.md, DEPLOYMENT.md
+|-- data/                     # Source workbook (read-only) + frozen evidence
+|-- var/                      # Runtime SQLite (git-ignored, auto-created)
+`-- artifacts/                # Local logs + validation evidence (git-ignored)
+```
+
+## Limitations / future work
+
+Not implemented: real authentication/authorization, TLS, role
+isolation, Power BI service publishing or any managed hosting, lifecycle
+execution (proposals never mutate the estate), canonical/executable
+semantic equivalence, and general-purpose reporting beyond the curated
+catalogs.
+
+Suggested next steps for a team: broaden manual UX and edge-case
+coverage, keep the governance controls and frozen-evidence guarantees
+intact while extending, design the presentation and deployment shape
+(proposed architecture in `docs/DEPLOYMENT.md`), and rotate the shared
+event credential.
