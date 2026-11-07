@@ -101,6 +101,9 @@ coverage, simulated identities/policy, and empty event stores. Six acceptance
 scenarios are kept outside the retrieval data. Data checks are recorded in
 artifacts/validation/demo_data_validation.json.
 
-The chat, LLM, governance enforcement, specification compiler, approval workflow,
-report renderer and BI export are not implemented. The organizer estate still
-requires a relationship audit before using its records for executable decisions.
+A local demo slice now implements chat intake, deterministic governance checks,
+guided intent confirmation, simulated approval and report rendering over the
+demo_v1 fixture; an opt-in LLM adapter exists but is disabled by default.
+BI export and a published report destination are not implemented. The
+organizer estate still requires a relationship audit before using its records
+for executable decisions.

@@ -1,0 +1,10 @@
+{
+  "synthetic_record": true,
+  "source": "Explicit fictional rows in create_operational_data.py; no Bayer values.",
+  "grain": [
+    "product_id",
+    "market_id",
+    "month"
+  ],
+  "rows": 12
+}

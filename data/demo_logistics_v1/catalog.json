@@ -1,0 +1,184 @@
+{
+  "dataset_id": "smart-librarian-logistics-v1",
+  "domain_id": "logistics",
+  "synthetic_record": true,
+  "dimension_labels": {
+    "products": "Distribution lanes",
+    "markets": "Destination markets"
+  },
+  "owners": [
+    {
+      "owner_id": "DEMO-OWNER-LOGISTICS",
+      "name": "Synthetic Distribution Steward",
+      "status": "active"
+    }
+  ],
+  "users": [
+    {
+      "user_id": "DEMO-USER-GLOBAL",
+      "name": "Synthetic Global Analyst",
+      "allowed_market_ids": [
+        "DE",
+        "FI"
+      ]
+    },
+    {
+      "user_id": "DEMO-USER-FI",
+      "name": "Synthetic Finland Analyst",
+      "allowed_market_ids": [
+        "FI"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric_id": "DEMO-DELIVERED",
+      "name": "Delivered Orders",
+      "aliases": [
+        "delivered orders",
+        "deliveries"
+      ],
+      "unit": "orders",
+      "operator": "sum",
+      "column": "delivered_orders",
+      "definition": "SUM(delivered_orders)",
+      "owner_id": "DEMO-OWNER-LOGISTICS",
+      "approval_status": "approved",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-ON-TIME-PCT",
+      "name": "On Time Delivery %",
+      "aliases": [
+        "on time delivery",
+        "on time delivery percent",
+        "otd"
+      ],
+      "unit": "percent",
+      "operator": "ratio_of_sums",
+      "numerator": "on_time_orders",
+      "denominator": "delivered_orders",
+      "factor": 100,
+      "zero_denominator": "null",
+      "definition": "100 * SUM(on_time_orders) / SUM(delivered_orders)",
+      "owner_id": "DEMO-OWNER-LOGISTICS",
+      "approval_status": "approved",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-LEAD-DAYS",
+      "name": "Average Lead Time",
+      "aliases": [
+        "average lead time",
+        "lead time"
+      ],
+      "unit": "days",
+      "operator": "ratio_of_sums",
+      "numerator": "lead_time_total_days",
+      "denominator": "delivered_orders",
+      "factor": 1,
+      "zero_denominator": "null",
+      "definition": "SUM(lead_time_total_days) / SUM(delivered_orders)",
+      "owner_id": "DEMO-OWNER-LOGISTICS",
+      "approval_status": "approved",
+      "synthetic_record": true
+    }
+  ],
+  "models": [
+    {
+      "model_id": "DEMO-MODEL-LOGISTICS",
+      "name": "Synthetic Distribution Performance",
+      "contract_version": "1.0.0",
+      "domain_id": "logistics",
+      "owner_id": "DEMO-OWNER-LOGISTICS",
+      "endorsement": "certified",
+      "certification_is_simulated": true,
+      "schema": {
+        "products": {
+          "product_id": "TEXT",
+          "product_name": "TEXT"
+        },
+        "markets": {
+          "market_id": "TEXT",
+          "market_name": "TEXT",
+          "currency": "TEXT"
+        },
+        "calendar": {
+          "month": "TEXT",
+          "year": "INTEGER",
+          "month_number": "INTEGER"
+        },
+        "logistics_monthly": {
+          "product_id": "TEXT",
+          "market_id": "TEXT",
+          "month": "TEXT",
+          "delivered_orders": "INTEGER",
+          "on_time_orders": "INTEGER",
+          "lead_time_total_days": "INTEGER",
+          "value_type": "TEXT"
+        }
+      },
+      "grain": [
+        "product_id",
+        "market_id",
+        "month"
+      ],
+      "fact_table": "logistics_monthly",
+      "time_column": "month",
+      "supported_grains": [
+        "month"
+      ],
+      "required_row_filter": {
+        "value_type": "synthetic_actual"
+      },
+      "coverage": {
+        "product_ids": [
+          "DEMO-L-COLD",
+          "DEMO-L-STD"
+        ],
+        "market_ids": [
+          "DE",
+          "FI"
+        ],
+        "months": [
+          "2026-01-01",
+          "2026-02-01",
+          "2026-03-01"
+        ]
+      },
+      "supported_metric_ids": [
+        "DEMO-DELIVERED",
+        "DEMO-ON-TIME-PCT",
+        "DEMO-LEAD-DAYS"
+      ],
+      "relationships": [
+        {
+          "from_table": "logistics_monthly",
+          "from_column": "product_id",
+          "to_table": "products",
+          "to_column": "product_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "logistics_monthly",
+          "from_column": "market_id",
+          "to_table": "markets",
+          "to_column": "market_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "logistics_monthly",
+          "from_column": "month",
+          "to_table": "calendar",
+          "to_column": "month",
+          "cardinality": "many_to_one"
+        }
+      ],
+      "snapshot_as_of": "2026-11-06T00:00:00Z",
+      "refresh_status": "healthy",
+      "refresh_is_simulated": true
+    }
+  ],
+  "reports": [],
+  "lineage": []
+}

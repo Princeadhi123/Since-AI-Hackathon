@@ -1,0 +1,197 @@
+{
+  "dataset_id": "smart-librarian-quality-v1",
+  "domain_id": "quality",
+  "synthetic_record": true,
+  "dimension_labels": {
+    "products": "Production lines",
+    "markets": "Plant regions"
+  },
+  "owners": [
+    {
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "name": "Synthetic Quality Steward",
+      "status": "active"
+    }
+  ],
+  "users": [
+    {
+      "user_id": "DEMO-USER-GLOBAL",
+      "name": "Synthetic Global Analyst",
+      "allowed_market_ids": [
+        "DE",
+        "FI"
+      ]
+    },
+    {
+      "user_id": "DEMO-USER-FI",
+      "name": "Synthetic Finland Analyst",
+      "allowed_market_ids": [
+        "FI"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric_id": "DEMO-INSPECTED",
+      "name": "Inspected Units",
+      "aliases": [
+        "inspected units",
+        "inspections"
+      ],
+      "unit": "units",
+      "operator": "sum",
+      "column": "inspected_units",
+      "definition": "SUM(inspected_units)",
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "approval_status": "approved",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-REJECTED",
+      "name": "Rejected Units",
+      "aliases": [
+        "rejected units",
+        "rejects"
+      ],
+      "unit": "units",
+      "operator": "sum",
+      "column": "rejected_units",
+      "definition": "SUM(rejected_units)",
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "approval_status": "approved",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-REJECT-PCT",
+      "name": "Rejection Rate %",
+      "aliases": [
+        "rejection rate",
+        "defect rate",
+        "rejection rate percent"
+      ],
+      "unit": "percent",
+      "operator": "ratio_of_sums",
+      "numerator": "rejected_units",
+      "denominator": "inspected_units",
+      "factor": 100,
+      "zero_denominator": "null",
+      "definition": "100 * SUM(rejected_units) / SUM(inspected_units)",
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "approval_status": "approved",
+      "synthetic_record": true
+    },
+    {
+      "metric_id": "DEMO-BATCHES",
+      "name": "Batches Inspected",
+      "aliases": [
+        "batches inspected",
+        "batches"
+      ],
+      "unit": "batches",
+      "operator": "sum",
+      "column": "batches",
+      "definition": "SUM(batches)",
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "approval_status": "approved",
+      "synthetic_record": true
+    }
+  ],
+  "models": [
+    {
+      "model_id": "DEMO-MODEL-QUALITY",
+      "name": "Synthetic Manufacturing Quality",
+      "contract_version": "1.0.0",
+      "domain_id": "quality",
+      "owner_id": "DEMO-OWNER-QUALITY",
+      "endorsement": "certified",
+      "certification_is_simulated": true,
+      "schema": {
+        "products": {
+          "product_id": "TEXT",
+          "product_name": "TEXT"
+        },
+        "markets": {
+          "market_id": "TEXT",
+          "market_name": "TEXT",
+          "currency": "TEXT"
+        },
+        "calendar": {
+          "month": "TEXT",
+          "year": "INTEGER",
+          "month_number": "INTEGER"
+        },
+        "quality_monthly": {
+          "product_id": "TEXT",
+          "market_id": "TEXT",
+          "month": "TEXT",
+          "inspected_units": "INTEGER",
+          "rejected_units": "INTEGER",
+          "batches": "INTEGER",
+          "value_type": "TEXT"
+        }
+      },
+      "grain": [
+        "product_id",
+        "market_id",
+        "month"
+      ],
+      "fact_table": "quality_monthly",
+      "time_column": "month",
+      "supported_grains": [
+        "month"
+      ],
+      "required_row_filter": {
+        "value_type": "synthetic_actual"
+      },
+      "coverage": {
+        "product_ids": [
+          "DEMO-Q-TAB",
+          "DEMO-Q-PACK"
+        ],
+        "market_ids": [
+          "DE",
+          "FI"
+        ],
+        "months": [
+          "2026-01-01",
+          "2026-02-01",
+          "2026-03-01"
+        ]
+      },
+      "supported_metric_ids": [
+        "DEMO-INSPECTED",
+        "DEMO-REJECTED",
+        "DEMO-REJECT-PCT",
+        "DEMO-BATCHES"
+      ],
+      "relationships": [
+        {
+          "from_table": "quality_monthly",
+          "from_column": "product_id",
+          "to_table": "products",
+          "to_column": "product_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "quality_monthly",
+          "from_column": "market_id",
+          "to_table": "markets",
+          "to_column": "market_id",
+          "cardinality": "many_to_one"
+        },
+        {
+          "from_table": "quality_monthly",
+          "from_column": "month",
+          "to_table": "calendar",
+          "to_column": "month",
+          "cardinality": "many_to_one"
+        }
+      ],
+      "snapshot_as_of": "2026-11-06T00:00:00Z",
+      "refresh_status": "healthy",
+      "refresh_is_simulated": true
+    }
+  ],
+  "reports": [],
+  "lineage": []
+}
