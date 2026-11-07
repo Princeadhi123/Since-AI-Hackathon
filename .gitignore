@@ -11,3 +11,8 @@ build/
 dist/
 var/
 artifacts/
+
+data/evidence/*.html
+data/evidence/*.xlsx
+
+data/public_financials_v2/sources/

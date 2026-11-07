@@ -35,18 +35,20 @@ def _metric_names(report: dict) -> dict:
 
 
 def _svg_chart(rows: list[dict], metric_id: str, metric_name: str,
-               unit: str) -> str:
+               unit: str, time_column: str = "month") -> str:
     """Tiny inline SVG line chart from existing row values (no recompute).
 
     Null values are preserved as gaps: a series never draws a line across a
     month where the rate is undefined.
     """
     width, height, pad = 560, 180, 30
-    months = sorted({row.get("month") for row in rows if row.get("month")})
+    months = sorted(
+        {row.get(time_column) for row in rows if row.get(time_column)}
+    )
     series: dict[tuple, dict] = {}
     for row in rows:
         key = (row.get("product_name"), row.get("market_name"))
-        series.setdefault(key, {})[row.get("month")] = row.get(metric_id)
+        series.setdefault(key, {})[row.get(time_column)] = row.get(metric_id)
     if not months or not series:
         return ""
     values = [
@@ -133,12 +135,18 @@ def export_report_html(report: dict) -> str:
     spec = report.get("spec") or {}
     intent = spec.get("intent") or {}
     asset = report.get("asset") or {}
+    time_column = report.get("time_column") or "month"
+    time_label = report.get("time_label") or "Month"
+    is_public = (
+        report.get("data_classification") == "public_reported_actual"
+        or (report.get("synthetic_record") is False)
+    )
 
-    metric_ids = list(totals) or [
+    metric_ids = list(totals) or list(units) or [
         m["metric_id"] for m in spec.get("requested_metrics") or []
     ]
     metric_names = _metric_names(report)
-    dimension_cols = ["product_name", "market_name", "month"]
+    dimension_cols = ["product_name", "market_name", time_column]
     header = "".join(f"<th scope='col'>{_e(c)}</th>" for c in dimension_cols)
     header += "".join(
         f"<th scope='col'>{_e(metric_names.get(m, m))}"
@@ -159,10 +167,11 @@ def export_report_html(report: dict) -> str:
         f"{_e(_fmt(totals.get(m), units.get(m)))}</div>"
         f"<div class='label'>{_e(metric_names.get(m, m))}</div></div>"
         for m in metric_ids
+        if m in totals
     )
     charts = "".join(
-        f"<h3>{_e(metric_names.get(m, m))} by month</h3>"
-        f"{_svg_chart(rows, m, metric_names.get(m, m), units.get(m))}"
+        f"<h3>{_e(metric_names.get(m, m))} by {_e(time_label.lower())}</h3>"
+        f"{_svg_chart(rows, m, metric_names.get(m, m), units.get(m), time_column)}"
         for m in metric_ids
         if any(row.get(m) is not None for row in rows)
     )
@@ -181,12 +190,36 @@ def export_report_html(report: dict) -> str:
         "dataset_id": spec.get("dataset_id"),
         "dataset_fingerprint": spec.get("dataset_fingerprint"),
         "grain": intent.get("grain"),
+        "time_column": report.get("time_column"),
+        "data_classification": report.get("data_classification"),
     }
+    provenance.update(
+        {f"source_{k}": v for k, v in
+         (report.get("source_provenance") or {}).items()}
+    )
     prov_items = "".join(
         f"<tr><th scope='row'>{_e(k)}</th><td>{_e(v)}</td></tr>"
         for k, v in provenance.items()
         if v is not None
     )
+    if is_public:
+        banner = (
+            "Published actual sales figures from public company "
+            "disclosure. Simulated approval and registry only - not Bayer "
+            "certification or internal data. Local preview artifact only."
+        )
+        totals_heading = (
+            "Totals (single fiscal year only)"
+            if time_column == "fiscal_year"
+            else "Totals (single reporting period only)"
+        )
+    else:
+        banner = (
+            "Synthetic demo data - not real business figures. "
+            "Simulated approval and certification; local preview artifact "
+            "only."
+        )
+        totals_heading = "Totals"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -216,10 +249,9 @@ caption {{ text-align: left; font-weight: bold; padding: 4px 0; }}
 </style>
 </head>
 <body>
-<div class="banner">Synthetic demo data - not real business figures.
-Simulated approval and certification; local preview artifact only.</div>
+<div class="banner">{_e(banner)}</div>
 <h1>Report: {_e(asset.get("name") or report.get("registered_asset_id") or "Local preview")}</h1>
-<section aria-label="Totals">{cards}</section>
+<section aria-label="{_e(totals_heading)}">{cards}</section>
 {charts}
 <h2>Rows</h2>
 <table>
@@ -240,11 +272,23 @@ Simulated approval and certification; local preview artifact only.</div>
 def build_report_bundle(report: dict) -> bytes:
     """Zip bundle: report.html, report.csv, specification.json, README.txt."""
     rows = report.get("rows") or []
-    metric_ids = list((report.get("totals") or {}))
+    units = report.get("units") or {}
+    metric_ids = list(report.get("totals") or {}) or list(units)
+    time_column = report.get("time_column") or "month"
+    is_public = (
+        report.get("data_classification") == "public_reported_actual"
+        or report.get("synthetic_record") is False
+    )
 
     csv_buffer = io.StringIO()
+    source_fields = [
+        field
+        for field in ("source_id", "source_table", "source_row_label",
+                      "source_column", "source_row")
+        if any(row.get(field) is not None for row in rows)
+    ]
     fieldnames = ["product_id", "product_name", "market_id", "market_name",
-                  "month"] + metric_ids
+                  time_column] + metric_ids + source_fields
     writer = csv.DictWriter(csv_buffer, fieldnames=fieldnames,
                             extrasaction="ignore")
     writer.writeheader()
@@ -252,8 +296,27 @@ def build_report_bundle(report: dict) -> bytes:
         writer.writerow(row)
     csv_text = csv_buffer.getvalue()
 
+    if time_column == "fiscal_year":
+        column_instruction = (
+            f"  3. Load, then keep '{time_column}' as a whole-number\n"
+            "     fiscal-year label - an integer column, not a date.\n\n"
+        )
+    elif time_column == "period":
+        column_instruction = (
+            "  3. Load, then keep 'period' as a text period label\n"
+            "     (values like '2025' or '2026-Q1') - not a date.\n\n"
+        )
+    else:
+        column_instruction = (
+            f"  3. Load, then mark '{time_column}' as a date column if "
+            "prompted.\n\n"
+        )
+    data_note = (
+        "published actual public data" if is_public
+        else "synthetic demo data"
+    )
     readme = (
-        "Smart Librarian report bundle (synthetic demo data)\n"
+        f"Smart Librarian report bundle ({data_note})\n"
         "===================================================\n\n"
         "Contents:\n"
         "  report.html         Self-contained offline report view. Open in any\n"
@@ -264,11 +327,26 @@ def build_report_bundle(report: dict) -> bytes:
         "Importing report.csv into Power BI:\n"
         "  1. In Power BI Desktop choose Get Data > Text/CSV.\n"
         "  2. Select report.csv and confirm the detected delimiter (comma).\n"
-        "  3. Load, then mark 'month' as a date column if prompted.\n\n"
+        + column_instruction +
         "Honest limitation: this bundle contains no .pbip/.pbix project and no\n"
         "direct Power BI export; CSV import is the only supported path.\n\n"
-        "All values are synthetic fixture figures produced by the fixed\n"
-        "calculation engine; they are copied here verbatim, not recomputed.\n"
+        + (
+            "All values are published actual public sales figures copied\n"
+            "verbatim from the frozen public source; approval and registry\n"
+            "metadata are simulated, not Bayer certification. "
+            + (
+                "Totals are\ncarried for a single fiscal year only - there "
+                "is deliberately\nno cross-year aggregate - and figures "
+                "stay in EUR million,\nunscaled.\n"
+                if time_column == "fiscal_year" else
+                "A total is\ncarried for one selected reporting period "
+                "only - there is deliberately\nno combined cross-period "
+                "aggregate - and figures stay in EUR million,\nunscaled.\n"
+            )
+            if is_public else
+            "All values are synthetic fixture figures produced by the fixed\n"
+            "calculation engine; they are copied here verbatim, not recomputed.\n"
+        )
     )
 
     specification = {

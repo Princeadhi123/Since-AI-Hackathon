@@ -121,5 +121,253 @@ class LauncherLifecycleTests(unittest.TestCase):
         self.assertTrue(ui.terminated)
 
 
+class BackgroundLauncherTests(unittest.TestCase):
+    """--background registers a scheduled task; no real spawns occur."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.run_demo = _load_run_demo()
+
+    def test_option_parses(self):
+        if self.run_demo.os.name != "nt":
+            self.skipTest("--background is Windows-only")
+        args = self.run_demo.parse_args(["--background"])
+        self.assertTrue(args.background)
+
+    def test_non_windows_rejected(self):
+        with mock.patch.object(self.run_demo.os, "name", "posix"):
+            with self.assertRaises(SystemExit):
+                self.run_demo.parse_args(["--background"])
+            with self.assertRaises(SystemExit):
+                self.run_demo.parse_args(["--background-worker"])
+
+    def test_mutually_exclusive_flags(self):
+        if self.run_demo.os.name != "nt":
+            self.skipTest("Windows-only flags")
+        with self.assertRaises(SystemExit):
+            self.run_demo.parse_args(
+                ["--background", "--background-worker"])
+
+    def test_spawn_command_forwards_mode_and_ports_without_recursion(
+            self):
+        args = mock.Mock(mode="challenge", api_port=8021, ui_port=8521)
+        command = self.run_demo._background_command(args)
+        joined = self.run_demo.subprocess.list2cmdline(
+            [str(c) for c in command])
+        self.assertIn("--mode challenge", joined)
+        self.assertIn("--api-port 8021", joined)
+        self.assertIn("--ui-port 8521", joined)
+        self.assertIn("--background-worker", command)
+        self.assertNotIn("--background", command)
+        self.assertTrue(str(command[1]).endswith("run_demo.py"))
+        self.assertIn('"', joined)
+
+    def test_background_command_uses_paired_pythonw(self):
+        args = mock.Mock(mode="challenge", api_port=8021, ui_port=8521)
+        exe = self.run_demo._background_command(args)[0]
+        if self.run_demo._window_python():
+            self.assertTrue(exe.lower().endswith("pythonw.exe"))
+        else:
+            self.assertEqual(exe, "")
+
+    def test_console_python_swaps_pythonw(self):
+        with mock.patch.object(
+                self.run_demo.sys, "executable",
+                r"C:\py\pythonw.exe"):
+            with mock.patch.object(
+                    self.run_demo.os.path, "exists", return_value=True):
+                self.assertEqual(
+                    self.run_demo._console_python(), r"C:\py\python.exe")
+            with mock.patch.object(
+                    self.run_demo.os.path, "exists", return_value=False):
+                self.assertEqual(
+                    self.run_demo._console_python(), r"C:\py\pythonw.exe")
+
+    def test_child_spawn_kwargs_only_when_worker(self):
+        plain = self.run_demo._child_spawn_kwargs(False)
+        self.assertEqual(plain, {})
+        worker = self.run_demo._child_spawn_kwargs(True)
+        self.assertIs(worker["stdin"],
+                      self.run_demo.subprocess.DEVNULL)
+        self.assertTrue(worker["creationflags"] & 0x08000000)
+
+    def test_start_api_uses_console_python_and_no_window(self):
+        captured = {}
+
+        def fake_popen(*a, **k):
+            captured.update(k)
+            captured["cmd"] = a[0]
+            return _FakeProcess()
+
+        with (
+            mock.patch.object(
+                self.run_demo.subprocess, "Popen", side_effect=fake_popen
+            ),
+            mock.patch.object(
+                self.run_demo, "wait_for_http", return_value=True
+            ),
+            mock.patch.object(
+                self.run_demo.sys, "executable", r"C:\py\pythonw.exe"
+            ),
+            mock.patch.object(
+                self.run_demo.os.path, "exists", return_value=True
+            ),
+        ):
+            children = []
+            self.run_demo._start_api(
+                {}, mock.Mock(), children, 8024,
+                "http://127.0.0.1:8024", background_worker=True)
+        self.assertTrue(captured["cmd"][0].lower().endswith("python.exe"))
+        self.assertIs(captured["stdin"],
+                      self.run_demo.subprocess.DEVNULL)
+        self.assertTrue(captured["creationflags"] & 0x08000000)
+
+    def test_task_names_unique(self):
+        args = mock.Mock(api_port=8021, ui_port=8521)
+        names = {self.run_demo._scheduler_task_name(args)
+                 for _ in range(4)}
+        self.assertEqual(len(names), 4)
+        self.assertTrue(all(
+            n.startswith("SmartLibrarianDemo-8021-8521-") for n in names))
+
+    def _run_background(self, health_results, port_free=True,
+                        create_rc=0, run_rc=0, create_exc=None,
+                        run_exc=None):
+        spawned = []
+        run_calls = []
+
+        def fake_popen(*a, **k):
+            proc = _FakeProcess()
+            spawned.append(proc)
+            return proc
+
+        def fake_run(cmd, **k):
+            run_calls.append(cmd)
+            if "/Create" in cmd and create_exc:
+                raise create_exc
+            if "/Run" in cmd and run_exc:
+                raise run_exc
+            rc = create_rc if "/Create" in cmd else run_rc
+            return mock.Mock(returncode=rc,
+                             stderr="denied" if rc else "",
+                             stdout="")
+
+        with (
+            mock.patch.object(
+                self.run_demo, "port_in_use",
+                return_value=not port_free,
+            ),
+            mock.patch.object(
+                self.run_demo.subprocess, "Popen", side_effect=fake_popen
+            ),
+            mock.patch.object(
+                self.run_demo.subprocess, "run", side_effect=fake_run
+            ),
+            mock.patch.object(
+                self.run_demo, "wait_for_http",
+                side_effect=list(health_results),
+            ),
+            mock.patch("builtins.open", mock.mock_open()),
+        ):
+            try:
+                code = self.run_demo.main(["--background"])
+            except SystemExit as exc:
+                code = exc.code
+        return code, spawned, run_calls
+
+    def test_occupied_port_refuses_spawn(self):
+        code, spawned, run_calls = self._run_background(
+            [], port_free=False)
+        self.assertEqual(code, 2)
+        self.assertEqual(spawned, [])
+        self.assertEqual(run_calls, [])
+
+    def test_background_registers_and_runs_task(self):
+        code, spawned, run_calls = self._run_background([True, True])
+        self.assertEqual(code, 0)
+        self.assertEqual(spawned, [])
+        self.assertEqual(len(run_calls), 2)
+        create, run = run_calls
+        self.assertIn("/Create", create)
+        self.assertIn("/Run", run)
+        self.assertNotIn("/F", create)
+        self.assertNotIn("/IT", create)
+        self.assertNotIn("/RU", create)
+        name = create[create.index("/TN") + 1]
+        self.assertTrue(name.startswith("SmartLibrarianDemo-8000-8501-"))
+        self.assertIn(name, run)
+        tr = create[create.index("/TR") + 1]
+        self.assertIn("--mode challenge", tr)
+        self.assertIn("--background-worker", tr)
+        self.assertNotIn(" --background ", tr + " ")
+
+    def test_create_failure_returns_nonzero_no_spawn(self):
+        code, spawned, run_calls = self._run_background(
+            [True, True], create_rc=1)
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+        self.assertEqual(len(run_calls), 1)
+
+    def test_run_failure_returns_nonzero(self):
+        code, spawned, run_calls = self._run_background(
+            [True, True], run_rc=1)
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+        self.assertEqual(len(run_calls), 2)
+
+    def test_create_oserror_returns_nonzero(self):
+        code, spawned, _ = self._run_background(
+            [True, True], create_exc=OSError("missing schtasks"))
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+
+    def test_create_timeout_returns_nonzero(self):
+        code, spawned, _ = self._run_background(
+            [True, True],
+            create_exc=self.run_demo.subprocess.TimeoutExpired(
+                "schtasks", 60))
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+
+    def test_run_oserror_returns_nonzero(self):
+        code, spawned, run_calls = self._run_background(
+            [True, True], run_exc=OSError("denied"))
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+        self.assertEqual(len(run_calls), 2)
+
+    def test_run_timeout_returns_nonzero(self):
+        code, spawned, run_calls = self._run_background(
+            [True, True],
+            run_exc=self.run_demo.subprocess.TimeoutExpired(
+                "schtasks", 60))
+        self.assertEqual(code, 5)
+        self.assertEqual(spawned, [])
+        self.assertEqual(len(run_calls), 2)
+
+    def test_missing_pythonw_returns_nonzero_no_spawn(self):
+        with (
+            mock.patch.object(
+                self.run_demo, "port_in_use", return_value=False
+            ),
+            mock.patch.object(
+                self.run_demo, "_window_python", return_value=""
+            ),
+            mock.patch.object(
+                self.run_demo.subprocess, "run"
+            ) as run_mock,
+            mock.patch("builtins.open", mock.mock_open()),
+        ):
+            code = self.run_demo.main(["--background"])
+        self.assertEqual(code, 5)
+        run_mock.assert_not_called()
+
+    def test_health_failure_returns_nonzero(self):
+        code, spawned, _ = self._run_background([False])
+        self.assertEqual(code, 3)
+        code, spawned, _ = self._run_background([True, False])
+        self.assertEqual(code, 4)
+
+
 if __name__ == "__main__":
     unittest.main()

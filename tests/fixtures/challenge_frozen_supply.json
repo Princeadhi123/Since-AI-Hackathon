@@ -1,0 +1,129 @@
+{
+  "spec": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement.",
+    "kind": "report",
+    "domain_id": "supply",
+    "intent": {
+      "product_ids": [
+        "P-NUB"
+      ],
+      "market_ids": [
+        "DE"
+      ],
+      "metric_ids": [
+        "forecast_accuracy_pct_syn",
+        "inventory_weeks_syn",
+        "otif_pct_syn",
+        "primary_mode",
+        "risk_status",
+        "supply_source"
+      ],
+      "months": [],
+      "grain": "snapshot"
+    },
+    "owner_id": "OWN-001",
+    "source_sheet": "Supply_Operations",
+    "fields": [
+      {
+        "metric_id": "supply_source",
+        "name": "Supply source",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "supply source"
+        ]
+      },
+      {
+        "metric_id": "primary_mode",
+        "name": "Transport mode",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "primary mode"
+        ]
+      },
+      {
+        "metric_id": "otif_pct_syn",
+        "name": "Snapshot synthetic on-time in-full",
+        "unit": "%",
+        "context_kpi_id": "KPI-020",
+        "aliases": [
+          "otif pct"
+        ]
+      },
+      {
+        "metric_id": "inventory_weeks_syn",
+        "name": "Snapshot synthetic inventory",
+        "unit": "weeks",
+        "context_kpi_id": "KPI-016",
+        "aliases": [
+          "inventory weeks"
+        ]
+      },
+      {
+        "metric_id": "forecast_accuracy_pct_syn",
+        "name": "Snapshot synthetic forecast accuracy",
+        "unit": "%",
+        "context_kpi_id": "KPI-006",
+        "aliases": [
+          "forecast accuracy pct"
+        ]
+      },
+      {
+        "metric_id": "risk_status",
+        "name": "Supply risk status",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "risk status"
+        ]
+      }
+    ],
+    "aggregation": "none",
+    "semantic_note": "KPI IDs are contextual references, not certified executable model bindings. Native workbook units are preserved (sales in million EUR, not KPI catalog EUR). Snapshot and monthly sources are distinct and are never joined or averaged. value_type is preserved; forecast-like rows are not actual performance."
+  },
+  "spec_hash": "af79c4aab5ddb862a1a1bbf05ae875957d56391d992eca23a7d7261cacefe78b",
+  "rows": [
+    {
+      "product_id": "P-NUB",
+      "market_id": "DE",
+      "forecast_accuracy_pct_syn": 93.7,
+      "inventory_weeks_syn": 8.8,
+      "otif_pct_syn": 87.9,
+      "primary_mode": "road",
+      "risk_status": "green",
+      "supply_source": "External-CMO",
+      "synthetic_record": true,
+      "product_name": "Nubeqa",
+      "market_name": "Germany",
+      "_source_sheet": "Supply_Operations",
+      "_source_row": 2
+    }
+  ],
+  "units": {
+    "supply_source": "category",
+    "primary_mode": "category",
+    "otif_pct_syn": "%",
+    "inventory_weeks_syn": "weeks",
+    "forecast_accuracy_pct_syn": "%",
+    "risk_status": "category"
+  },
+  "source_provenance": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement."
+  },
+  "totals": {},
+  "quality_checks": [
+    "Exact confirmed scope",
+    "Complete non-event coverage",
+    "Source-row-identical values",
+    "No cross-source joins or aggregation",
+    "Fingerprint-bound specification",
+    "Native units and value_type preserved"
+  ]
+}

@@ -209,6 +209,16 @@ _FIELD_QUESTIONS = {
     "months_year": "Which year does that month range refer to?",
 }
 
+_ANNUAL_FIELD_QUESTIONS = {
+    "product_ids": "Which product(s)? Choose the published product list.",
+    "market_ids": "Only global reported sales are available. Confirm Global or revise your request.",
+    "metric_ids": "Choose Reported Sales; forecasts and other metrics are unavailable.",
+    "months": "Which fiscal year(s): 2024 and/or 2025?",
+    "grain": "This source supports annual fiscal-year reporting only.",
+    "months_year": "Which fiscal year does that range refer to?",
+}
 
-def questions_for(unresolved: list[str]) -> list[str]:
-    return [_FIELD_QUESTIONS.get(field, f"Clarify {field}.") for field in unresolved]
+
+def questions_for(unresolved: list[str], grain: str = "month") -> list[str]:
+    mapping = _ANNUAL_FIELD_QUESTIONS if grain == "year" else _FIELD_QUESTIONS
+    return [mapping.get(field, f"Clarify {field}.") for field in unresolved]

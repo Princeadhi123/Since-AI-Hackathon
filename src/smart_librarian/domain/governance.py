@@ -21,6 +21,13 @@ ACTORS = {
         "allowed_market_ids": ["DE", "FI", "FR"],
         "simulated": True,
     },
+    "DEMO-PUBLIC-APPROVER": {
+        "actor_id": "DEMO-PUBLIC-APPROVER",
+        "name": "Demo Public-data Approver",
+        "roles": ["approver"],
+        "allowed_market_ids": ["GLOBAL"],
+        "simulated": True,
+    },
 }
 
 DEFAULT_APPROVER_ID = "DEMO-APPROVER"

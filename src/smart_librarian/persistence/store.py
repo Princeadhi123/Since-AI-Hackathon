@@ -48,6 +48,28 @@ CREATE TABLE IF NOT EXISTS generated_reports (
     endorsement TEXT NOT NULL,
     destination_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS challenge_plans (
+    plan_id TEXT PRIMARY KEY,
+    revision INTEGER NOT NULL,
+    requester TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL,
+    domain_id TEXT,
+    spec_hash TEXT,
+    source_fingerprint TEXT,
+    spec_json TEXT NOT NULL,
+    report_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS challenge_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -241,6 +263,198 @@ class RuntimeStore:
             connection.commit()
         stored = self.get_generated_report(asset["asset_id"])
         return stored, True
+
+    @staticmethod
+    def _decode_plan(row: sqlite3.Row) -> dict:
+        record = dict(row)
+        record["spec"] = json.loads(record.pop("spec_json"))
+        report = record.pop("report_json")
+        record["report"] = json.loads(report) if report else None
+        return record
+
+    def create_challenge_plan(self, requester: str, kind: str, domain_id,
+                              spec: dict, spec_hash, fingerprint,
+                              rationale: str = "") -> dict:
+        plan_id = str(uuid.uuid4())
+        now = _now()
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO challenge_plans (plan_id, revision, requester,"
+                " kind, status, domain_id, spec_hash, source_fingerprint,"
+                " spec_json, report_json, created_at, updated_at) VALUES"
+                " (?, 0, ?, ?, 'pending', ?, ?, ?, ?, NULL, ?, ?)",
+                (plan_id, requester, kind, domain_id, spec_hash, fingerprint,
+                 json.dumps(spec, sort_keys=True), now, now),
+            )
+            connection.execute(
+                "INSERT INTO challenge_events (plan_id, user_id, event_type,"
+                " detail, created_at) VALUES (?, ?, ?, ?, ?)",
+                (plan_id, requester, "plan_created",
+                 json.dumps({"kind": kind, "spec_hash": spec_hash,
+                             "rationale": rationale}), now),
+            )
+            connection.commit()
+        return self.get_challenge_plan(plan_id)
+
+    def get_challenge_plan(self, plan_id: str) -> dict | None:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT * FROM challenge_plans WHERE plan_id = ?", (plan_id,),
+            ).fetchone()
+        return self._decode_plan(row) if row else None
+
+    def list_challenge_plans(self) -> list[dict]:
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT * FROM challenge_plans ORDER BY created_at, plan_id"
+            ).fetchall()
+        return [self._decode_plan(row) for row in rows]
+
+    def find_approved_challenge_plan(self, spec_hash: str,
+                                     fingerprint: str) -> dict | None:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT * FROM challenge_plans WHERE spec_hash = ? AND"
+                " source_fingerprint = ? AND status IN ('approved','rendered')"
+                " ORDER BY created_at LIMIT 1",
+                (spec_hash, fingerprint),
+            ).fetchone()
+        return self._decode_plan(row) if row else None
+
+    def update_challenge_plan(self, plan_id: str, expected_revision: int,
+                              fields: dict, audit: dict) -> dict:
+        """CAS status/spec/report transition plus an audit event."""
+        assignments = ", ".join(f"{key} = ?" for key in fields)
+        values = [
+            json.dumps(value, sort_keys=True)
+            if key in ("spec_json", "report_json") else value
+            for key, value in fields.items()
+        ]
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                f"UPDATE challenge_plans SET {assignments},"
+                " revision = revision + 1, updated_at = ?"
+                " WHERE plan_id = ? AND revision = ?",
+                (*values, _now(), plan_id, expected_revision),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                raise RevisionConflict(plan_id)
+            connection.execute(
+                "INSERT INTO challenge_events (plan_id, user_id, event_type,"
+                " detail, created_at) VALUES (?, ?, ?, ?, ?)",
+                (plan_id, audit["user_id"], audit["event_type"],
+                 json.dumps(audit["detail"]), _now()),
+            )
+            connection.commit()
+        return self.get_challenge_plan(plan_id)
+
+    def decide_challenge_plan(self, plan_id: str, expected_revision: int,
+                              target: str, requester: str, spec_hash: str,
+                              fingerprint: str,
+                              audit: dict) -> tuple[dict, dict | None]:
+        """Atomic approval/reject with report dedup coalescing.
+
+        For an approve decision on a report plan, another already
+        approved/rendered plan with the same spec_hash + source fingerprint
+        wins inside the same IMMEDIATE transaction: this plan becomes
+        'superseded' with a duplicate_reused audit event and the winner is
+        returned as (winner, loser). Otherwise the decision is applied and
+        (plan, None) is returned.
+        """
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT kind, status FROM challenge_plans WHERE plan_id = ?"
+                " AND revision = ? AND status = 'pending' AND spec_hash = ?"
+                " AND source_fingerprint = ? AND requester = ?",
+                (plan_id, expected_revision, spec_hash, fingerprint,
+                 requester),
+            ).fetchone()
+            if row is None:
+                connection.rollback()
+                raise RevisionConflict(plan_id)
+            winner_row = None
+            if target == "approved" and row["kind"] == "report":
+                winner_row = connection.execute(
+                    "SELECT * FROM challenge_plans WHERE spec_hash = ? AND"
+                    " source_fingerprint = ? AND plan_id != ? AND"
+                    " status IN ('approved','rendered')"
+                    " ORDER BY created_at LIMIT 1",
+                    (spec_hash, fingerprint, plan_id),
+                ).fetchone()
+            now = _now()
+            if winner_row is not None:
+                cursor = connection.execute(
+                    "UPDATE challenge_plans SET status = 'superseded',"
+                    " revision = revision + 1, updated_at = ?"
+                    " WHERE plan_id = ? AND revision = ?"
+                    " AND status = 'pending'",
+                    (now, plan_id, expected_revision),
+                )
+                if cursor.rowcount != 1:
+                    connection.rollback()
+                    raise RevisionConflict(plan_id)
+                connection.execute(
+                    "INSERT INTO challenge_events (plan_id, user_id,"
+                    " event_type, detail, created_at) VALUES"
+                    " (?, ?, 'duplicate_reused', ?, ?)",
+                    (plan_id, audit["user_id"],
+                     json.dumps({"winner_plan_id": winner_row["plan_id"],
+                                 "spec_hash": spec_hash}), now),
+                )
+                connection.commit()
+                return (
+                    self._decode_plan(winner_row),
+                    self.get_challenge_plan(plan_id),
+                )
+            cursor = connection.execute(
+                "UPDATE challenge_plans SET status = ?, revision = revision + 1,"
+                " updated_at = ? WHERE plan_id = ? AND revision = ?"
+                " AND status = 'pending'",
+                (target, now, plan_id, expected_revision),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                raise RevisionConflict(plan_id)
+            connection.execute(
+                "INSERT INTO challenge_events (plan_id, user_id, event_type,"
+                " detail, created_at) VALUES (?, ?, ?, ?, ?)",
+                (plan_id, audit["user_id"], audit["event_type"],
+                 json.dumps(audit["detail"]), now),
+            )
+            connection.commit()
+        return self.get_challenge_plan(plan_id), None
+
+    def append_challenge_event(self, plan_id: str, user_id: str,
+                             event_type: str, detail: dict) -> None:
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO challenge_events (plan_id, user_id, event_type,"
+                " detail, created_at) VALUES (?, ?, ?, ?, ?)",
+                (plan_id, user_id, event_type, json.dumps(detail), _now()),
+            )
+            connection.commit()
+
+    def list_challenge_events(self, plan_id: str) -> list[dict]:
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT user_id, event_type, detail, created_at FROM"
+                " challenge_events WHERE plan_id = ? ORDER BY id",
+                (plan_id,),
+            ).fetchall()
+        return [
+            {
+                "user_id": row["user_id"],
+                "event_type": row["event_type"],
+                "detail": json.loads(row["detail"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
 
     def list_audit(self, session_id: str) -> list[dict]:
         with closing(self._connect()) as connection:

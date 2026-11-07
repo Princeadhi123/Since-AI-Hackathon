@@ -20,6 +20,11 @@ try:
         build_report_bundle,
         export_report_html,
     )
+    from smart_librarian.reporting.powerbi import (
+        build_powerbi_import_bundle,
+        build_public_financials_bundle,
+        serialize_rows_csv,
+    )
     _EXPORTS_AVAILABLE = True
 except Exception:
     _EXPORTS_AVAILABLE = False
@@ -28,11 +33,22 @@ API_URL = os.environ.get("SMART_LIBRARIAN_API_URL", "http://127.0.0.1:8000")
 
 _CSS = """
 <style>
-html, body, [class*="css"] { background-color: #faf6ef; }
-.stApp { background-color: #faf6ef; }
-h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; color: #16494a; }
+html, body, [class*="css"] {
+    background-color: #f4f7f9;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+.stApp { background-color: #f4f7f9; }
+h1, h2, h3 {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #0f3557;
+}
+.tagline {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.05rem; font-weight: 600; color: #0e7c7b;
+    margin-top: -10px; margin-bottom: 4px;
+}
 .status-strip {
-    background: #16494a; color: #f3ead9; padding: 6px 14px;
+    background: #0f3557; color: #e8f0f4; padding: 6px 14px;
     border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;
 }
 .step-strip {
@@ -40,17 +56,20 @@ h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; color: #16494a; }
     font-size: 0.8rem;
 }
 .step {
-    background: #efe6d3; color: #7a6f5c; padding: 4px 12px;
-    border-radius: 12px; border: 1px solid #e4d9c3;
+    background: #e6edf1; color: #5a6b7a; padding: 4px 12px;
+    border-radius: 12px; border: 1px solid #d5e0e6;
 }
-.step.done { background: #dfe8dd; color: #3d5a40; border-color: #b9cdb9; }
-.step.now { background: #16494a; color: #f3ead9; border-color: #16494a; }
+.step.done { background: #dff0ee; color: #155f5e; border-color: #b8dcd8; }
+.step.now { background: #0e7c7b; color: #eef7f6; border-color: #0e7c7b; }
 .card {
-    background: #ffffff; border: 1px solid #e4d9c3; border-radius: 8px;
+    background: #ffffff; border: 1px solid #d5e0e6; border-radius: 8px;
     padding: 10px 14px; margin-bottom: 8px;
 }
-.card-title { font-family: Georgia, serif; color: #16494a; font-weight: bold; }
-.small-muted { color: #7a6f5c; font-size: 0.8rem; }
+.card-title {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #0f3557; font-weight: bold;
+}
+.small-muted { color: #5a6b7a; font-size: 0.8rem; }
 </style>
 """
 
@@ -115,6 +134,30 @@ SCENARIOS = {
                 "grain": "month",
             },
             "note": "Expects PROPOSE_BUILD, approval and publish - or REUSE if this scope was already registered in a previous run.",
+        },
+    ],
+    "public_sales": [
+        {
+            "label": "Public data - Nubeqa Global 2025 Reported Sales",
+            "intent": {
+                "product_ids": ["PUBLIC-NUBEQA"], "market_ids": ["GLOBAL"],
+                "metric_ids": ["PUBLIC-REPORTED-SALES"],
+                "months": ["2025"],
+                "grain": "year",
+            },
+            "note": "Actual published figures; first run expects PROPOSE_BUILD and approval - or REUSE if this scope was already registered.",
+        },
+        {
+            "label": "Public data - all four products 2024/2025 comparison",
+            "intent": {
+                "product_ids": ["PUBLIC-NUBEQA", "PUBLIC-KERENDIA",
+                                "PUBLIC-EYLEA", "PUBLIC-XARELTO"],
+                "market_ids": ["GLOBAL"],
+                "metric_ids": ["PUBLIC-REPORTED-SALES"],
+                "months": ["2024", "2025"],
+                "grain": "year",
+            },
+            "note": "Actual published figures; first run expects PROPOSE_BUILD and approval - or REUSE if this scope was already registered.",
         },
     ],
 }
@@ -262,14 +305,18 @@ def _progress_strip(state):
     )
 
 
-def main():
+def _legacy_main():
     st.set_page_config(page_title="Smart Librarian (demo)", layout="wide")
     st.markdown(_CSS, unsafe_allow_html=True)
     st.title("Smart Librarian")
+    st.markdown(
+        "<div class='tagline'>Build less. Trust more.</div>",
+        unsafe_allow_html=True,
+    )
     st.caption(
-        "Governed analytics over synthetic fixtures. Simulated identities, "
-        "roles and approvals - demonstration only, not real Bayer data, "
-        "authentication or access control."
+        "Governed report workflow over synthetic demo fixtures plus the "
+        "published-actual public domain. Identities and approvals are "
+        "simulated, not authentication or enterprise access control."
     )
 
     try:
@@ -298,73 +345,103 @@ def main():
         st.session_state["domain_select"] = pending_domain
 
     with st.sidebar:
-        st.header("Demo scope")
-        domain_id = st.selectbox(
-            "Domain",
-            options=list(domains),
-            format_func=lambda did: domains[did]["display_name"],
-            key="domain_select",
+        workspace = st.radio(
+            "Workspace",
+            options=[
+                "Build & reuse",
+                "Challenge estate",
+                "Public financials",
+                "Deployment readiness",
+            ],
+            key="workspace_select",
         )
-        try:
-            users_response = api_get("/api/demo-users", {"domain_id": domain_id})
-        except httpx.HTTPError:
-            api_unavailable()
-            return
-        if users_response.status_code != 200:
-            api_unavailable()
-            return
-        users = users_response.json()["users"]
-        user_options = {u["user_id"]: u for u in users}
-        user_id = st.selectbox(
-            "Simulated user",
-            options=list(user_options),
-            format_func=lambda uid: f"{user_options[uid]['name']} ({uid})",
-            key="identity_select",
-        )
-        st.caption(
-            "Switching domain or identity starts a fresh session and clears "
-            "results. Identities are simulated; this is not authentication."
-        )
-        if st.button("New request", key="new_request"):
-            st.session_state.pop("chat_text", None)
-            st.session_state.pop("resume_checked", None)
-            _reset_identity(user_id, domain_id)
-            st.rerun()
-
-        provider_label = capabilities.get("label") or "provider"
-        config_error = capabilities.get("error")
-        if capabilities.get("configured"):
-            llm_note = (
-                f"{provider_label} configured ({capabilities.get('model')})"
+        if workspace == "Build & reuse":
+            st.header("Demo scope")
+            sticky_domain = st.session_state.get("sticky_domain_id")
+            if (sticky_domain in domains
+                    and "domain_select" not in st.session_state):
+                st.session_state["domain_select"] = sticky_domain
+            domain_id = st.selectbox(
+                "Domain",
+                options=list(domains),
+                format_func=lambda did: domains[did]["display_name"],
+                key="domain_select",
             )
-        elif config_error:
-            llm_note = f"config error - {config_error}"
-        else:
-            llm_note = "not configured - offline parser will be used"
-        llm_selected = st.checkbox(
-            "Use LLM intent extraction (opt-in)",
-            value=False,
-            key="use_llm",
-            disabled=not capabilities.get("configured"),
-            help=(
-                f"Sends your request text plus catalog metadata choices to "
-                f"the configured provider ({provider_label}). Catalog "
-                "metadata contains no source business figures, but your "
-                "request text may contain confidential information - do not "
-                "enter secrets. Checking this box is your permission for "
-                "that transmission."
-            ),
-        )
-        # Even if a stale True lingers in widget state, never send use_llm
-        # to the API unless the provider is currently configured.
-        use_llm = bool(llm_selected) and bool(capabilities.get("configured"))
-        st.caption(
-            f"LLM provider: {llm_note}. No provider call happens unless "
-            "this box is checked. Aitta may need to cold-start the model "
-            "(first request can take a while); failures fall back to the "
-            "offline parser."
-        )
+            try:
+                users_response = api_get("/api/demo-users", {"domain_id": domain_id})
+            except httpx.HTTPError:
+                api_unavailable()
+                return
+            if users_response.status_code != 200:
+                api_unavailable()
+                return
+            users = users_response.json()["users"]
+            user_options = {u["user_id"]: u for u in users}
+            sticky_user = st.session_state.get("sticky_user_id")
+            if (sticky_user in user_options
+                    and "identity_select" not in st.session_state):
+                st.session_state["identity_select"] = sticky_user
+            user_id = st.selectbox(
+                "Simulated user",
+                options=list(user_options),
+                format_func=lambda uid: f"{user_options[uid]['name']} ({uid})",
+                key="identity_select",
+            )
+            st.session_state.sticky_domain_id = domain_id
+            st.session_state.sticky_user_id = user_id
+            st.caption(
+                "Switching domain or identity starts a fresh session and clears "
+                "results. Identities are simulated; this is not authentication."
+            )
+            if st.button("New request", key="new_request"):
+                st.session_state.pop("chat_text", None)
+                st.session_state.pop("resume_checked", None)
+                _reset_identity(user_id, domain_id)
+                st.rerun()
+
+            provider_label = capabilities.get("label") or "provider"
+            config_error = capabilities.get("error")
+            if capabilities.get("configured"):
+                llm_note = (
+                    f"{provider_label} configured ({capabilities.get('model')})"
+                )
+            elif config_error:
+                llm_note = f"config error - {config_error}"
+            else:
+                llm_note = "not configured - offline parser will be used"
+            llm_selected = st.checkbox(
+                "Use LLM intent extraction (opt-in)",
+                value=False,
+                key="use_llm",
+                disabled=not capabilities.get("configured"),
+                help=(
+                    f"Sends your request text plus catalog metadata choices to "
+                    f"the configured provider ({provider_label}). Catalog "
+                    "metadata contains no source business figures, but your "
+                    "request text may contain confidential information - do not "
+                    "enter secrets. Checking this box is your permission for "
+                    "that transmission."
+                ),
+            )
+            # Even if a stale True lingers in widget state, never send use_llm
+            # to the API unless the provider is currently configured.
+            use_llm = bool(llm_selected) and bool(capabilities.get("configured"))
+            st.caption(
+                f"LLM provider: {llm_note}. No provider call happens unless "
+                "this box is checked. Aitta may need to cold-start the model "
+                "(first request can take a while); failures fall back to the "
+                "offline parser."
+            )
         st.caption(f"API: {API_URL}")
+
+    if workspace != "Build & reuse":
+        if workspace == "Challenge estate":
+            _page_challenge_estate()
+        elif workspace == "Public financials":
+            _page_public_financials()
+        else:
+            _page_deployment_readiness()
+        return
 
     if st.session_state.pop("resume_adopted", None):
         # Session was adopted via ?session_id= including its own domain;
@@ -417,10 +494,22 @@ def main():
     market_label = labels.get("markets", "Markets")
     mode = state.get("extraction_mode") or "offline"
 
+    is_public_domain = domain_id == "public_sales"
+    if is_public_domain:
+        snapshot_text = (
+            "Published actual annual data - public source snapshot as of "
+            + html.escape(str(model_meta.get("snapshot_as_of", "unknown")))
+            + " (frozen file, not live company systems)"
+        )
+    else:
+        snapshot_text = (
+            "Synthetic snapshot as of "
+            + html.escape(str(model_meta.get("snapshot_as_of", "unknown")))
+            + " (not live data)"
+        )
     st.markdown(
-        "<div class='status-strip'>Synthetic snapshot as of "
-        + html.escape(str(model_meta.get("snapshot_as_of", "unknown")))
-        + " (not live data) | Domain: " + html.escape(str(domain_id))
+        "<div class='status-strip'>" + snapshot_text
+        + " | Domain: " + html.escape(str(domain_id))
         + " | Simulated identity: " + html.escape(user_id)
         + " | Extraction mode: " + html.escape(str(mode))
         + " | Dataset: " + html.escape(str(catalog["choices"]["dataset_id"]))
@@ -451,6 +540,8 @@ def main():
     text = st.text_input(
         "Describe the report you want",
         placeholder=(
+            "e.g. Show global reported sales for Nubeqa in 2025"
+            if is_public_domain else
             "e.g. Show monthly figures for a product in a market from "
             "January through March 2026"
         ),
@@ -534,7 +625,9 @@ def main():
         return f"{name} ({mid})"
 
     def month_label(month):
-        return month + (" (outside coverage)" if month in extra_months else "")
+        return str(month) + (
+            " (outside coverage)" if month in extra_months else ""
+        )
 
     cols = st.columns(2)
     with cols[0]:
@@ -558,7 +651,7 @@ def main():
             key=_widget_key("metric_ids"),
         )
         sel_months = st.multiselect(
-            "Months", month_options,
+            choices.get("period_label") or "Months", month_options,
             default=[v for v in prefill.get("months", []) if v in month_options],
             format_func=month_label,
             key=_widget_key("months"),
@@ -678,7 +771,12 @@ def main():
     for note in state.get("candidate_explanations") or []:
         st.caption(note)
 
-    with st.expander("Evidence (simulated catalog snapshot)", expanded=False):
+    with st.expander(
+        "Evidence (frozen public-source snapshot; simulated governance)"
+        if is_public_domain else
+        "Evidence (simulated catalog snapshot)",
+        expanded=False,
+    ):
         for item in state.get("evidence") or []:
             st.markdown(
                 "<div class='card'><span class='card-title'>"
@@ -753,13 +851,23 @@ def _approval_panel(user_id):
             st.session_state.actors = []
     actors = st.session_state.actors or []
     options = {a["actor_id"]: a for a in actors}
+    spec_markets = (
+        ((st.session_state.get("state") or {}).get("proposal") or {})
+        .get("spec") or {}
+    ).get("intent", {}).get("market_ids") or []
+    eligible = {
+        aid: a for aid, a in options.items()
+        if "approver" in (a.get("roles") or [])
+        and set(spec_markets).issubset(set(a.get("allowed_market_ids") or []))
+    }
+    shown = eligible or options
     actor_id = st.selectbox(
         "Simulated approval actor",
-        options=list(options) or ["DEMO-APPROVER"],
+        options=list(shown) or ["DEMO-APPROVER"],
         format_func=lambda aid: (
-            f"{options[aid]['name']} ({aid}) - roles: "
-            f"{', '.join(options[aid]['roles'])}"
-            if aid in options else aid
+            f"{shown[aid]['name']} ({aid}) - roles: "
+            f"{', '.join(shown[aid]['roles'])}"
+            if aid in shown else aid
         ),
         key=_widget_key("actor"),
     )
@@ -892,11 +1000,29 @@ def decide(decision, actor_id):
 
 
 def render_report(report):
-    st.subheader("Report preview")
-    st.caption(
-        "Local preview only - generated assets live in the local registry; "
-        "no BI file or published URL exists. Values are synthetic."
+    is_public = (
+        report.get("data_classification") == "public_reported_actual"
+        or report.get("synthetic_record") is False
     )
+    st.subheader("Report preview")
+    if is_public:
+        st.caption(
+            "Published actual annual sales from public company disclosure; "
+            "approval, owner and registry metadata are simulated - not "
+            "Bayer certification or internal data. Local preview only."
+        )
+        source = report.get("source_provenance") or {}
+        st.caption(
+            "Source: " + str(source.get("source_title") or "public source")
+            + " | " + str(source.get("source_url") or "")
+            + " | sha256: " + str(source.get("source_sha256") or "")[:16]
+            + "..."
+        )
+    else:
+        st.caption(
+            "Local preview only - generated assets live in the local registry; "
+            "no BI file or published URL exists. Values are synthetic."
+        )
     asset = report.get("asset") or {}
     if report.get("registered_asset_id"):
         owner = asset.get("owner_name") or asset.get("owner_id") or "unknown"
@@ -910,31 +1036,39 @@ def render_report(report):
         item["metric_id"]: item.get("name") or item["metric_id"]
         for item in (report.get("spec") or {}).get("requested_metrics") or []
     }
-    cols = st.columns(len(totals))
-    for col, (metric, value) in zip(cols, totals.items()):
-        label = metric_names.get(metric, metric)
-        unit = units.get(metric)
-        if value is None:
-            display = "N/A"
-        elif unit == "percent":
-            display = f"{value:.2f}%"
-        elif unit == "EUR":
-            display = f"{value:,} EUR"
-        else:
-            display = f"{value:,} {unit or ''}".strip()
-        col.metric(label, display)
+    if totals:
+        cols = st.columns(len(totals))
+        for col, (metric, value) in zip(cols, totals.items()):
+            label = metric_names.get(metric, metric)
+            unit = units.get(metric)
+            if value is None:
+                display = "N/A"
+            elif unit == "percent":
+                display = f"{value:.2f}%"
+            elif unit == "EUR":
+                display = f"{value:,} EUR"
+            else:
+                display = f"{value:,} {unit or ''}".strip()
+            col.metric(label, display)
+    else:
+        st.caption(
+            "No combined total is shown: a total is defined only for a "
+            "single fiscal year and is never summed across years."
+        )
 
     frame = pd.DataFrame(report["rows"])
+    time_column = report.get("time_column") or "month"
 
     def traces(metrics_list):
-        """One trace per product x market x metric, months on the x-axis."""
+        """One trace per product x market x metric, periods on the x-axis."""
         for metric in metrics_list:
             for (product, market), group in frame.groupby(
                 ["product_name", "market_name"], sort=True
             ):
-                group = group.sort_values("month")
+                group = group.sort_values(time_column)
                 yield go.Scatter(
-                    x=group["month"], y=group[metric], mode="lines+markers",
+                    x=group[time_column], y=group[metric],
+                    mode="lines+markers",
                     name=f"{metric_names.get(metric, metric)} | "
                          f"{product} | {market}",
                 )
@@ -972,11 +1106,415 @@ def render_report(report):
             file_name="smart_librarian_report.zip",
             mime="application/zip",
         )
+        st.download_button(
+            "Download Power BI import kit (ZIP)",
+            data=build_powerbi_import_bundle(report),
+            file_name="smart_librarian_powerbi_kit.zip",
+            mime="application/zip",
+            help=(
+                "Frozen report values plus typed Power Query scripts and a "
+                "theme for manual import. Not a PBIP/PBIX file; no service "
+                "publishing."
+            ),
+        )
     else:
         st.caption(
             "HTML/ZIP export unavailable - the export helper is not "
             "importable in this environment."
         )
+
+
+def _fetch_evidence(kind):
+    try:
+        response = api_get(f"/api/evidence/{kind}")
+    except httpx.HTTPError:
+        api_unavailable()
+        return None
+    if response.status_code != 200:
+        st.error(
+            f"Evidence unavailable ({response.status_code}): "
+            f"{response.json().get('detail', response.text)}"
+        )
+        return None
+    return response.json()
+
+
+def _rows_by(tables, name, column, value):
+    return [
+        row for row in (tables.get(name) or [])
+        if value is not None and row.get(column) == value
+    ]
+
+
+def _provenance_strip(payload, source_label):
+    st.markdown(
+        "<div class='status-strip'>"
+        + html.escape(source_label) + " | retrieved (UTC): "
+        + html.escape(str(payload.get("retrieved_at_utc", "unknown")))
+        + " | classification: "
+        + html.escape(str(payload.get("data_classification", "unknown")))
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "This is public or synthetic challenge evidence - not secured "
+        "company systems. No user data is exposed."
+    )
+    with st.expander("Data provenance and scope", expanded=False):
+        st.markdown(payload.get("disclaimer") or "")
+        st.caption(
+            "source_sha256: " + str(payload.get("source_sha256", ""))
+        )
+
+
+def _page_challenge_estate():
+    st.header("Challenge estate")
+    st.caption(
+        "Read-only browser over the official SinceAI builder-pack estate. "
+        "The Smart Librarian workflow uses separate demo fixtures and does "
+        "not evaluate this workbook estate."
+    )
+    payload = _fetch_evidence("challenge")
+    if payload is None:
+        return
+    _provenance_strip(payload, f"Source file: {payload.get('source_file')}")
+    tables = payload.get("tables") or {}
+    assets = tables.get("Analytics_Assets") or []
+
+    search = st.text_input(
+        "Search assets by name or ID", key="estate_search",
+        placeholder="Literal substring match",
+    )
+    platforms = sorted({a.get("platform") for a in assets if a.get("platform")})
+    platform = st.selectbox(
+        "Platform", ["All"] + platforms, key="estate_platform"
+    )
+    needle = search.strip().lower()
+    filtered = [
+        a for a in assets
+        if (platform == "All" or a.get("platform") == platform)
+        and (not needle
+             or needle in str(a.get("asset_name", "")).lower()
+             or needle in str(a.get("asset_id", "")).lower())
+    ]
+    st.caption(
+        f"{len(filtered)} of {len(assets)} analytics assets shown. "
+        "_source_row links each record back to the source workbook row."
+    )
+    st.dataframe(pd.DataFrame(filtered), use_container_width=True,
+                 hide_index=True)
+
+    options = {a["asset_id"]: a for a in filtered if a.get("asset_id")}
+    if not options:
+        st.warning("No assets match the current search/filter.")
+        return
+    asset_id = st.selectbox(
+        "Select asset by ID",
+        options=list(options),
+        format_func=lambda aid: f"{options[aid].get('asset_name')} ({aid})",
+        key="estate_asset",
+    )
+    asset = options[asset_id]
+    model_id = asset.get("model_id")
+    owner_id = asset.get("owner_id")
+
+    st.subheader("Selected record (unmodified)")
+    st.caption(
+        f"Source workbook row {asset.get('_source_row')} of "
+        "Analytics_Assets."
+    )
+    st.json(asset)
+
+    models = tables.get("Semantic_Models") or []
+    owners = tables.get("Owners") or []
+    model = next((m for m in models if m.get("model_id") == model_id), None)
+    owner = next((o for o in owners if o.get("owner_id") == owner_id), None)
+    cols = st.columns(2)
+    with cols[0]:
+        st.markdown("**Linked semantic model**")
+        if model:
+            st.caption(f"Source row {model.get('_source_row')}")
+            st.json(model)
+        else:
+            st.caption("No matching Semantic_Models record.")
+    with cols[1]:
+        st.markdown("**Linked owner**")
+        if owner:
+            st.caption(f"Source row {owner.get('_source_row')}")
+            st.json(owner)
+        else:
+            st.caption("No matching Owners record.")
+
+    st.subheader("KPI mappings")
+    kpi_rows = _rows_by(tables, "Asset_KPI_Map", "asset_id", asset_id)
+    catalog = {k.get("kpi_id"): k for k in (tables.get("KPI_Catalog") or [])}
+    resolved = []
+    for row in kpi_rows:
+        kpi = catalog.get(row.get("kpi_id"))
+        resolved.append({
+            **row,
+            "kpi_name": kpi.get("kpi_name") if kpi else None,
+            "kpi_unit": kpi.get("unit") if kpi else None,
+            "kpi_definition_status":
+                kpi.get("definition_status") if kpi else None,
+            "kpi_source_row": kpi.get("_source_row") if kpi else None,
+        })
+    st.caption(
+        f"{len(resolved)} Asset_KPI_Map rows resolved against KPI_Catalog "
+        "by kpi_id."
+    )
+    st.dataframe(pd.DataFrame(resolved), use_container_width=True,
+                 hide_index=True)
+
+    st.subheader("Usage")
+    usage = _rows_by(tables, "Asset_Usage", "asset_id", asset_id)
+    st.caption(
+        f"{len(usage)} monthly rows shown as recorded. Monthly unique "
+        "users are reported per row and are never summed."
+    )
+    st.dataframe(pd.DataFrame(usage), use_container_width=True,
+                 hide_index=True)
+
+    st.subheader("Governance signals")
+    signals = _rows_by(tables, "Governance_Signals", "asset_id", asset_id)
+    st.dataframe(pd.DataFrame(signals), use_container_width=True,
+                 hide_index=True)
+    st.caption(
+        "The absence of a governance signal is not a certification of "
+        "quality; signals are recorded observations only."
+    )
+
+    st.subheader("Lineage (direct edges)")
+    anchor_ids = {asset_id}
+    if model_id:
+        anchor_ids.add(model_id)
+    edges = [
+        e for e in (tables.get("Lineage_Edges") or [])
+        if e.get("source_id") in anchor_ids or e.get("target_id") in anchor_ids
+    ]
+    st.caption(
+        "Direct edges where the selected asset or its semantic model is "
+        "source or target; no transitive closure is computed."
+    )
+    st.dataframe(pd.DataFrame(edges), use_container_width=True,
+                 hide_index=True)
+
+    st.subheader("Migration backlog")
+    backlog = _rows_by(tables, "Migration_Backlog", "source_asset_id",
+                       asset_id)
+    st.dataframe(pd.DataFrame(backlog), use_container_width=True,
+                 hide_index=True)
+    st.caption(
+        "Migration backlog entries are supplied scenario inputs from the "
+        "challenge pack, not executed actions or validated recommendations."
+    )
+
+    st.subheader("Data quality findings")
+    record_ids = {v for v in (asset_id, model_id, owner_id) if v}
+    issues = [
+        r for r in (tables.get("Data_Quality") or [])
+        if r.get("record_id") in record_ids
+    ]
+    st.caption(
+        "Findings whose record_id matches the selected asset, its model "
+        "or its owner."
+    )
+    st.dataframe(pd.DataFrame(issues), use_container_width=True,
+                 hide_index=True)
+
+    with st.expander("Governance rules (reference)", expanded=False):
+        st.dataframe(pd.DataFrame(tables.get("Governance_Rules") or []),
+                     use_container_width=True, hide_index=True)
+
+
+def _page_public_financials():
+    st.header("Public financials")
+    st.caption(
+        "Actual public annual sales for selected products - global "
+        "reported figures in EUR million, from published company "
+        "disclosure."
+    )
+    payload = _fetch_evidence("public")
+    if payload is None:
+        return
+    _provenance_strip(payload, "Public source")
+    source_url = payload.get("source_url")
+    if source_url:
+        st.markdown(
+            f"Source: [{html.escape(str(payload.get('source_title') or source_url))}]"
+            f"({source_url})"
+        )
+    st.caption(
+        f"Unit: {payload.get('unit')} | Grain: {payload.get('grain')} | "
+        f"Local snapshot: {payload.get('source_snapshot')} | The original "
+        "source spreadsheet (bayer_public_product_sales_2025.xlsx) is "
+        "retained under data/evidence for the Power BI import path."
+    )
+
+    rows = payload.get("rows") or []
+    frame = pd.DataFrame(rows)
+    if not frame.empty:
+        chart = go.Figure()
+        for year in sorted(frame["year"].unique()):
+            part = frame[frame["year"] == year]
+            chart.add_trace(go.Bar(
+                x=part["product_name"], y=part["sales_eur_million"],
+                name=str(year),
+            ))
+        chart.update_layout(
+            barmode="group",
+            title=(
+                "Actual public annual product sales - global, "
+                f"{payload.get('unit', 'EUR million')}"
+            ),
+            yaxis_title=str(payload.get("unit", "EUR million")),
+            template="simple_white",
+        )
+        st.plotly_chart(chart, use_container_width=True)
+
+    st.dataframe(frame, use_container_width=True, hide_index=True)
+    if _EXPORTS_AVAILABLE:
+        st.download_button(
+            "Download rows as CSV",
+            data=serialize_rows_csv(
+                rows,
+                ["product_name", "year", "sales_eur_million",
+                 "source_table", "source_row_label"],
+            ),
+            file_name="public_financials.csv",
+            mime="text/csv",
+        )
+    else:
+        st.download_button(
+            "Download rows as CSV",
+            data=frame.to_csv(index=False),
+            file_name="public_financials.csv",
+            mime="text/csv",
+        )
+    st.download_button(
+        "Download rows as JSON",
+        data=json.dumps(rows, indent=2),
+        file_name="public_financials_rows.json",
+        mime="application/json",
+    )
+    if _EXPORTS_AVAILABLE:
+        st.download_button(
+            "Download Power BI public-data kit (ZIP)",
+            data=build_public_financials_bundle(payload),
+            file_name="public_financials_powerbi_kit.zip",
+            mime="application/zip",
+            help=(
+                "CSV, typed Power Query script, theme and provenance for "
+                "manual import. Not a PBIP/PBIX file."
+            ),
+        )
+    st.warning(
+        "Scope limits: these figures are global annual reported sales for "
+        "four selected products only. This view cannot answer monthly, "
+        "country-level or forecast questions. The governed 'Bayer public "
+        "sales (real data)' workflow domain uses this same actual dataset; "
+        "the legacy synthetic demo fixtures remain separate and are never "
+        "combined with it."
+    )
+
+
+def _page_deployment_readiness():
+    st.header("Deployment readiness")
+    st.caption(
+        "Honest status: this is a local demonstration, not production-"
+        "ready software. Nothing below is a commitment to deploy."
+    )
+
+    st.subheader("Implemented (works locally today)")
+    st.markdown(
+        "- Governed request workflow: intent confirmation, spec-hash-bound "
+        "approvals, REUSE / PROPOSE_CHANGE / PROPOSE_BUILD outcomes\n"
+        "- Fixed calculation engines over the synthetic demo fixtures plus "
+        "a fixed annual adapter serving the frozen public-source file; no "
+        "arbitrary SQL or formulas\n"
+        "- Session audit trail and local asset registry\n"
+        "- Report preview with HTML / CSV / ZIP and Power BI import-kit "
+        "exports\n"
+        "- Read-only evidence API for the challenge estate and public "
+        "financials\n"
+        "- Opt-in LLM intent extraction with an offline-parser fallback"
+    )
+    st.subheader("Simulated (demo-only, not real)")
+    st.markdown(
+        "- Identities, roles and approvals (no authentication)\n"
+        "- Endorsement and certification labels on generated assets\n"
+        "- 'Published' assets - they are local registry records, not BI "
+        "workspace artifacts\n"
+        "- Migration backlog paths - supplied scenario inputs, not "
+        "executed actions"
+    )
+    st.subheader("Unbuilt (would require production work)")
+    st.markdown(
+        "- Entra ID (Microsoft Entra) authentication and group-based "
+        "authorization\n"
+        "- Publishing into a real Power BI workspace; PBIP/PBIX artifact "
+        "generation\n"
+        "- Microsoft Fabric integration (OneLake, semantic models, "
+        "pipelines)\n"
+        "- Connections to real data platforms, monitoring, row-level "
+        "security, secret management\n"
+        "- TLS / network hardening - this demo is loopback HTTP only"
+    )
+
+    st.subheader("Target architecture")
+    st.markdown(
+        "Entra ID sign-in -> governed API service -> governed semantic "
+        "layer -> Power BI workspace / Fabric capacity. Each hop needs the "
+        "unbuilt items above before it can be claimed."
+    )
+
+    st.subheader("Responsibilities")
+    st.dataframe(
+        pd.DataFrame([
+            {"role": "Asset owner",
+             "responsibility": "Owns the report's business content and "
+                               "lifecycle; requests changes; accountable "
+                               "for what the asset claims."},
+            {"role": "Business steward",
+             "responsibility": "Maintains KPI definitions, market/product "
+                               "scope metadata and endorsement decisions; "
+                               "approves spec changes."},
+            {"role": "Platform admin",
+             "responsibility": "Operates the service, identities and "
+                               "workspaces; enforces access control, "
+                               "secrets and release gates."},
+        ]),
+        use_container_width=True, hide_index=True,
+    )
+    st.subheader("Human release checkpoint")
+    st.warning(
+        "No simulated approval in this demo authorizes a real release. "
+        "Production use requires a named human checkpoint: platform admin "
+        "verifies identity/security, business steward certifies KPI "
+        "definitions, and the asset owner signs off on content - before "
+        "anything reaches a Power BI workspace."
+    )
+
+
+def main():
+    try:
+        domains_response = api_get("/api/domains")
+    except httpx.HTTPError:
+        api_unavailable()
+        return
+    if domains_response.status_code == 200 and domains_response.json().get(
+        "challenge_mode"
+    ):
+        from smart_librarian.ui.challenge import main as _challenge_main
+        _challenge_main()
+        return
+    if domains_response.status_code == 200 and domains_response.json().get(
+        "real_data_only"
+    ):
+        from smart_librarian.ui.demo import main as _real_demo_main
+        _real_demo_main()
+        return
+    _legacy_main()
 
 
 if __name__ == "__main__":

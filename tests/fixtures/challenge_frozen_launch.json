@@ -1,0 +1,108 @@
+{
+  "spec": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement.",
+    "kind": "report",
+    "domain_id": "launch",
+    "intent": {
+      "product_ids": [
+        "P-NUB"
+      ],
+      "market_ids": [
+        "JP"
+      ],
+      "metric_ids": [
+        "business_impact",
+        "milestone_id",
+        "milestone_type",
+        "status"
+      ],
+      "months": [
+        "2026-01-01"
+      ],
+      "grain": "event"
+    },
+    "owner_id": "OWN-001",
+    "source_sheet": "Launch_Milestones",
+    "fields": [
+      {
+        "metric_id": "milestone_id",
+        "name": "Milestone ID",
+        "unit": "identifier",
+        "context_kpi_id": null,
+        "aliases": [
+          "milestone id"
+        ]
+      },
+      {
+        "metric_id": "milestone_type",
+        "name": "Milestone type",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "milestone type"
+        ]
+      },
+      {
+        "metric_id": "status",
+        "name": "Milestone status",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "status"
+        ]
+      },
+      {
+        "metric_id": "business_impact",
+        "name": "Business impact",
+        "unit": "category",
+        "context_kpi_id": null,
+        "aliases": [
+          "business impact"
+        ]
+      }
+    ],
+    "aggregation": "none",
+    "semantic_note": "KPI IDs are contextual references, not certified executable model bindings. Native workbook units are preserved (sales in million EUR, not KPI catalog EUR). Snapshot and monthly sources are distinct and are never joined or averaged. value_type is preserved; forecast-like rows are not actual performance."
+  },
+  "spec_hash": "fd187badcfa6fba95ed322adec2ab8e40189528062812e473e3084008b87096a",
+  "rows": [
+    {
+      "product_id": "P-NUB",
+      "market_id": "JP",
+      "business_impact": "low",
+      "milestone_id": "LM-0001",
+      "milestone_type": "reimbursement_decision",
+      "status": "in_progress",
+      "milestone_date": "2026-01-05T00:00:00",
+      "synthetic_record": true,
+      "product_name": "Nubeqa",
+      "market_name": "Japan",
+      "_source_sheet": "Launch_Milestones",
+      "_source_row": 2
+    }
+  ],
+  "units": {
+    "milestone_id": "identifier",
+    "milestone_type": "category",
+    "status": "category",
+    "business_impact": "category"
+  },
+  "source_provenance": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement."
+  },
+  "totals": {},
+  "quality_checks": [
+    "Exact confirmed scope",
+    "Complete non-event coverage",
+    "Source-row-identical values",
+    "No cross-source joins or aggregation",
+    "Fingerprint-bound specification",
+    "Native units and value_type preserved"
+  ]
+}

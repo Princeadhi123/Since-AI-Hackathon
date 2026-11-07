@@ -185,6 +185,56 @@ class BundleTests(unittest.TestCase):
         self.assertIn("no .pbip/.pbix", text.lower().replace("  ", " "))
         self.assertIn("synthetic", text.lower())
 
+    def test_readme_monthly_date_instruction_unchanged(self):
+        text = self.bundle.read("README.txt").decode("utf-8")
+        self.assertIn("mark 'month' as a date column", text)
+        self.assertNotIn("whole-number", text)
+
+
+class PeriodBundleTests(unittest.TestCase):
+    def _report(self):
+        report = copy.deepcopy(REPORT)
+        report["data_classification"] = "public_reported_actual"
+        report["synthetic_record"] = False
+        report["time_column"] = "period"
+        report["time_label"] = "Reporting period"
+        for row in report["rows"]:
+            row["period"] = row.pop("month")
+            row["source_id"] = "SRC-1"
+            row["source_table"] = "t"
+            row["source_row_label"] = "Nubeqa"
+            row["source_column"] = "2025"
+            row["source_row"] = "r1"
+        report["totals"] = {}
+        report["units"] = {"PUBLIC-REPORTED-SALES": "EUR million"}
+        report["rows"] = [
+            {k: v for k, v in row.items() if not k.startswith("DEMO-")}
+            | {"PUBLIC-REPORTED-SALES": 2385}
+            for row in report["rows"]
+        ]
+        return report
+
+    def test_period_csv_carries_source_refs(self):
+        bundle = zipfile.ZipFile(
+            io.BytesIO(build_report_bundle(self._report()))
+        )
+        text = bundle.read("report.csv").decode("utf-8")
+        header = text.splitlines()[0]
+        for field in ("source_id", "source_table", "source_row_label",
+                      "source_column", "source_row"):
+            self.assertIn(field, header)
+        self.assertIn("SRC-1", text)
+
+    def test_period_readme_no_date_or_cross_year(self):
+        bundle = zipfile.ZipFile(
+            io.BytesIO(build_report_bundle(self._report()))
+        )
+        text = bundle.read("README.txt").decode("utf-8")
+        self.assertIn("text period label", text)
+        self.assertNotIn("as a date column", text)
+        self.assertIn("cross-period", text)
+        self.assertNotIn("cross-year", text)
+
 
 if __name__ == "__main__":
     unittest.main()

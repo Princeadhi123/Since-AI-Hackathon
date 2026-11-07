@@ -68,6 +68,16 @@ def asset_identity(spec: dict) -> tuple[str, str]:
 
 
 def _evidence(catalog, model, candidate, metrics) -> list[dict]:
+    if model.get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+        from smart_librarian.domain.public_financials import (
+            financial_evidence_items,
+        )
+        return financial_evidence_items(catalog, model, candidate, metrics)
+    if model.get("model_id") == "PUBLIC-MODEL-ANNUAL":
+        from smart_librarian.domain.public_annual import (
+            public_evidence_items,
+        )
+        return public_evidence_items(catalog, model, candidate, metrics)
     items = []
 
     def add(kind, ref_path, record_id, detail, status):
@@ -191,6 +201,14 @@ def _month_gaps(coverage_months, months) -> list[str]:
 
 def _scope_gaps(model: dict, intent: dict) -> list[str]:
     """Grain plus product/market/month coverage checks."""
+    if model.get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+        from smart_librarian.domain.public_financials import (
+            financial_scope_gaps,
+        )
+        return financial_scope_gaps(model, intent)
+    if model.get("model_id") == "PUBLIC-MODEL-ANNUAL":
+        from smart_librarian.domain.public_annual import public_scope_gaps
+        return public_scope_gaps(model, intent)
     reasons = []
     coverage = model.get("coverage") or {}
     supported_grains = model.get("supported_grains") or []
@@ -377,6 +395,16 @@ def evaluate(catalog, user: dict, intent: dict, fingerprint: str,
             "Simulated snapshot as of 2026-11-06; not freshly retrieved live data."
         ),
     }
+    if model.get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+        from smart_librarian.domain.public_financials import (
+            financial_spec_metadata,
+        )
+        spec.update(financial_spec_metadata(catalog))
+    elif model.get("model_id") == "PUBLIC-MODEL-ANNUAL":
+        from smart_librarian.domain.public_annual import (
+            public_spec_metadata,
+        )
+        spec.update(public_spec_metadata(catalog))
     proposal = {
         "proposal_id": str(uuid.uuid4()),
         "spec": spec,

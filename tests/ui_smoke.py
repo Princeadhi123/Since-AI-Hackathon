@@ -61,6 +61,54 @@ def main():
     confirm = by_label(at.button, "Confirm intent")
     check("confirm disabled on blank form", confirm is not None and confirm.disabled)
 
+    domain = by_label(at.selectbox, "Domain")
+    check("default domain is public_sales",
+          domain is not None and domain.value == "public_sales")
+    check("fiscal years selector present",
+          by_label(at.multiselect, "Fiscal years") is not None)
+    prompt = by_label(at.text_input, "Describe the report you want")
+    check("public example placeholder",
+          prompt is not None and "Nubeqa" in (prompt.placeholder or ""))
+    scenario = by_label(
+        at.button, "Public data - Nubeqa Global 2025 Reported Sales"
+    )
+    check("public scenario button", scenario is not None)
+    scenario.click()
+    at.run()
+    by_label(at.button, "Confirm intent").click()
+    at.run()
+    text = all_text(at)
+    check("public intent confirmed",
+          "Propose" in text or "Reuse an existing governed report" in text)
+    approve = by_label(at.button, "Approve proposal")
+    if approve is not None:
+        actor = by_label(at.selectbox, "Simulated approval actor")
+        check("public approver widget", actor is not None)
+        actor.set_value("DEMO-PUBLIC-APPROVER")
+        at.run()
+        actor = by_label(at.selectbox, "Simulated approval actor")
+        check("public approver selected",
+              actor is not None and actor.value == "DEMO-PUBLIC-APPROVER")
+        by_label(at.button, "Approve proposal").click()
+        at.run()
+        check("public approved", "approved" in all_text(at).lower())
+    by_label(at.button, "Open report preview").click()
+    at.run()
+    check("public banner", "Published actual" in all_text(at))
+    check("fiscal_year column in preview", any(
+        "fiscal_year" in list(getattr(df.value, "columns", []))
+        for df in at.dataframe
+    ))
+    downloads = [b.label for b in at.get("download_button")]
+    check("public zip bundle offered",
+          "Download report bundle (ZIP)" in downloads)
+    check("public powerbi kit offered",
+          "Download Power BI import kit (ZIP)" in downloads)
+    check("no exceptions during public flow", not at.exception)
+    by_label(at.selectbox, "Domain").set_value("sales")
+    at.run()
+    check("sales domain selected for synthetic steps", not at.exception)
+
     # 1. Blank form completed without any chat -> REUSE path.
     fill(at, ["DEMO-P-NUB"], ["DE"], ["DEMO-NET-SALES"],
          ["2026-01-01", "2026-02-01", "2026-03-01"])

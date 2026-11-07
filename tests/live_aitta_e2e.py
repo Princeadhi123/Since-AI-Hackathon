@@ -198,7 +198,7 @@ def run_case(client, case, output, runtime, saved_intake=None):
     # Reopen the same persisted DB through a new app, without another model call.
     from smart_librarian.api.app import create_app
 
-    with TestClient(create_app(runtime_db=runtime)) as resumed:
+    with TestClient(create_app(include_synthetic=True, runtime_db=runtime)) as resumed:
         request(resumed, "GET", base, params=params)
         asset = request(resumed, "GET", f"/api/assets/{report['registered_asset_id']}",
                         params={**params, "domain_id": case["domain"]})
@@ -244,7 +244,7 @@ def main():
 
     results = []
     cases = [case for case in CASES if not args.case or case["case_id"] in args.case]
-    with TestClient(create_app(runtime_db=runtime)) as client:
+    with TestClient(create_app(include_synthetic=True, runtime_db=runtime)) as client:
         for case in cases:
             directory = output / case["case_id"]
             directory.mkdir()

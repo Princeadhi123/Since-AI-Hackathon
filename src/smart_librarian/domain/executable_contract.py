@@ -27,6 +27,16 @@ _SCHEMA = {
 def calculation_contract_gaps(catalog) -> list[str]:
     """Fail closed when a new catalog needs a different executable adapter."""
     model = catalog.model()
+    if model.get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+        from smart_librarian.domain.public_financials import (
+            financial_contract_gaps,
+        )
+        return financial_contract_gaps(catalog)
+    if model.get("model_id") == "PUBLIC-MODEL-ANNUAL":
+        from smart_librarian.domain.public_annual import (
+            public_contract_gaps,
+        )
+        return public_contract_gaps(catalog)
     domain_id = _OPERATIONAL_DOMAINS.get(model.get("model_id"))
     if domain_id is not None:
         return operational_contract_gaps(catalog, domain_id)

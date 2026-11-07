@@ -1,0 +1,145 @@
+{
+  "spec": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement.",
+    "kind": "report",
+    "domain_id": "commercial",
+    "intent": {
+      "product_ids": [
+        "P-NUB"
+      ],
+      "market_ids": [
+        "DE"
+      ],
+      "metric_ids": [
+        "forecast_m_eur_syn",
+        "forecast_variance_pct",
+        "inventory_weeks_syn",
+        "market_access_coverage_pct_syn",
+        "net_sales_m_eur_syn",
+        "otif_pct_syn",
+        "units_shipped_syn"
+      ],
+      "months": [
+        "2026-01-01"
+      ],
+      "grain": "month"
+    },
+    "owner_id": "OWN-001",
+    "source_sheet": "Product_Market_Monthly",
+    "fields": [
+      {
+        "metric_id": "net_sales_m_eur_syn",
+        "name": "Synthetic net sales",
+        "unit": "million EUR",
+        "context_kpi_id": "KPI-001",
+        "aliases": [
+          "net sales m eur"
+        ]
+      },
+      {
+        "metric_id": "forecast_m_eur_syn",
+        "name": "Synthetic sales forecast",
+        "unit": "million EUR",
+        "context_kpi_id": null,
+        "aliases": [
+          "forecast m eur"
+        ]
+      },
+      {
+        "metric_id": "forecast_variance_pct",
+        "name": "Published synthetic forecast variance",
+        "unit": "%",
+        "context_kpi_id": null,
+        "aliases": [
+          "forecast variance pct"
+        ]
+      },
+      {
+        "metric_id": "units_shipped_syn",
+        "name": "Synthetic units shipped",
+        "unit": "units",
+        "context_kpi_id": "KPI-014",
+        "aliases": [
+          "units shipped"
+        ]
+      },
+      {
+        "metric_id": "market_access_coverage_pct_syn",
+        "name": "Monthly synthetic market-access coverage",
+        "unit": "%",
+        "context_kpi_id": "KPI-027",
+        "aliases": [
+          "market access coverage pct"
+        ]
+      },
+      {
+        "metric_id": "otif_pct_syn",
+        "name": "Monthly synthetic on-time in-full",
+        "unit": "%",
+        "context_kpi_id": "KPI-020",
+        "aliases": [
+          "otif pct"
+        ]
+      },
+      {
+        "metric_id": "inventory_weeks_syn",
+        "name": "Monthly synthetic inventory",
+        "unit": "weeks",
+        "context_kpi_id": "KPI-016",
+        "aliases": [
+          "inventory weeks"
+        ]
+      }
+    ],
+    "aggregation": "none",
+    "semantic_note": "KPI IDs are contextual references, not certified executable model bindings. Native workbook units are preserved (sales in million EUR, not KPI catalog EUR). Snapshot and monthly sources are distinct and are never joined or averaged. value_type is preserved; forecast-like rows are not actual performance."
+  },
+  "spec_hash": "19cf2a5a96740c6084e33bf8063c5ad52cddecf7c61c8dacbea6d37e40a20c9f",
+  "rows": [
+    {
+      "product_id": "P-NUB",
+      "market_id": "DE",
+      "forecast_m_eur_syn": 18.42,
+      "forecast_variance_pct": 6.7,
+      "inventory_weeks_syn": 4.21,
+      "market_access_coverage_pct_syn": 49.4,
+      "net_sales_m_eur_syn": 19.66,
+      "otif_pct_syn": 65,
+      "units_shipped_syn": 79631,
+      "month": "2026-01-01T00:00:00",
+      "value_type": "forecast_like_synthetic",
+      "synthetic_record": true,
+      "product_name": "Nubeqa",
+      "market_name": "Germany",
+      "_source_sheet": "Product_Market_Monthly",
+      "_source_row": 2
+    }
+  ],
+  "units": {
+    "net_sales_m_eur_syn": "million EUR",
+    "forecast_m_eur_syn": "million EUR",
+    "forecast_variance_pct": "%",
+    "units_shipped_syn": "units",
+    "market_access_coverage_pct_syn": "%",
+    "otif_pct_syn": "%",
+    "inventory_weeks_syn": "weeks"
+  },
+  "source_provenance": {
+    "source_file": "Bayer_Pharmaceuticals_SinceAI_2026_FINAL_Builder_Data_Pack.xlsx",
+    "source_sha256": "7d01877096c640d7705c0507cfc32840dd88a99fe546d975a715f73b40f101ab",
+    "data_classification": "official_synthetic_challenge",
+    "disclaimer": "Official SinceAI synthetic builder pack, not actual Bayer performance. Reports preserve source rows and native units without aggregation. Estate decisions are review proposals, not executed migration or retirement."
+  },
+  "totals": {},
+  "quality_checks": [
+    "Exact confirmed scope",
+    "Complete non-event coverage",
+    "Source-row-identical values",
+    "No cross-source joins or aggregation",
+    "Fingerprint-bound specification",
+    "Native units and value_type preserved"
+  ]
+}

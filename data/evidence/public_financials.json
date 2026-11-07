@@ -1,0 +1,70 @@
+{
+  "source_url": "https://reports.bayer.com/annual-report-2025/en/report-on-economic-position/earnings-asset-and-financial-position/business-development-by-division/pharmaceuticals.html",
+  "source_title": "Bayer Annual Report 2025 — Pharmaceuticals",
+  "source_sha256": "d4339d4e56a76cd9d0f081b0ad5bce1d2124bb035ba7d504c0d33199425b0d24",
+  "source_snapshot": "bayer_pharma_2025.html",
+  "retrieved_at_utc": "2026-11-07T01:13:31.982654+00:00",
+  "data_classification": "public_reported_actual",
+  "disclaimer": "Actual published global product sales for four selected products, fiscal years 2024 and 2025, in EUR million. Not the whole division; not internal Bayer data, not forecasts, not monthly or country data. Reported sales are not currency/portfolio-adjusted growth. These figures are never combined with synthetic workflow figures.",
+  "rights_note": "Public company disclosure; no open-data license is asserted. The HTML snapshot is retained locally for verification; review publisher terms before redistributing source documents.",
+  "unit": "EUR million",
+  "grain": "product x fiscal_year; global reported sales",
+  "rows": [
+    {
+      "product_name": "Nubeqa",
+      "year": 2024,
+      "sales_eur_million": 1523,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Nubeqa™"
+    },
+    {
+      "product_name": "Nubeqa",
+      "year": 2025,
+      "sales_eur_million": 2385,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Nubeqa™"
+    },
+    {
+      "product_name": "Kerendia",
+      "year": 2024,
+      "sales_eur_million": 463,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Kerendia™"
+    },
+    {
+      "product_name": "Kerendia",
+      "year": 2025,
+      "sales_eur_million": 829,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Kerendia™"
+    },
+    {
+      "product_name": "Eylea",
+      "year": 2024,
+      "sales_eur_million": 3306,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Eylea™"
+    },
+    {
+      "product_name": "Eylea",
+      "year": 2025,
+      "sales_eur_million": 3110,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Eylea™"
+    },
+    {
+      "product_name": "Xarelto",
+      "year": 2024,
+      "sales_eur_million": 3480,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Xarelto™"
+    },
+    {
+      "product_name": "Xarelto",
+      "year": 2025,
+      "sales_eur_million": 2344,
+      "source_table": "Best-selling Pharmaceuticals products",
+      "source_row_label": "Xarelto™"
+    }
+  ]
+}

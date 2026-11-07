@@ -40,7 +40,8 @@ CONCURRENT_UPDATE_MESSAGE = "Session is being updated concurrently; retry."
 _DECISION_STATUS = {"approve": "approved", "reject": "rejected"}
 
 
-def _message_outcome(llm_error, unsupported, unresolved, questions):
+def _message_outcome(llm_error, unsupported, unresolved, questions,
+                     grain="month"):
     """Map an extraction result to the session outcome and reply text."""
     if llm_error is not None:
         return "CLARIFY", (
@@ -53,6 +54,16 @@ def _message_outcome(llm_error, unsupported, unresolved, questions):
         )
     if unresolved:
         return "CLARIFY", "I need a few more details: " + " ".join(questions)
+    if grain == "period":
+        return "CONFIRM_INTENT", (
+            "I extracted a complete reporting-period intent. Confirm it "
+            "in the guided form before any decision is made."
+        )
+    if grain == "year":
+        return "CONFIRM_INTENT", (
+            "I extracted a complete annual intent. Confirm it in the "
+            "guided form before any decision is made."
+        )
     return "CONFIRM_INTENT", (
         "I extracted a complete monthly intent. Confirm it in the "
         "guided form before any decision is made."
@@ -191,10 +202,45 @@ class WorkflowService:
             unresolved = parser.missing_fields(merged)
             unsupported = extraction.get("unsupported") or []
             state["unsupported"] = unsupported
-            state["questions"] = parser.questions_for(unresolved)
+            model_id = self.catalog.model().get("model_id")
+            if model_id == "PUBLIC-MODEL-FINANCIALS":
+                grain = "period"
+            elif self.domain_id == "public_sales":
+                grain = "year"
+            else:
+                grain = "month"
+            questions = parser.questions_for(unresolved, grain=grain)
+            if grain == "period":
+                period_questions = {
+                    "product_ids": (
+                        "Which published product(s) or product families? "
+                        "Choose from the reviewed selection."
+                    ),
+                    "market_ids": (
+                        "Only global reported sales are available. Confirm "
+                        "Global or revise your request."
+                    ),
+                    "metric_ids": (
+                        "Reported Sales (EUR million) is the only published "
+                        "measure; forecasts are unavailable."
+                    ),
+                    "months": (
+                        "Which reporting period(s), for example FY 2025, "
+                        "Q1 2026 or H1 2026?"
+                    ),
+                    "grain": (
+                        "Which period type: Annual, Quarterly or Half-year?"
+                    ),
+                }
+                questions = [
+                    period_questions.get(field, question)
+                    for field, question in zip(unresolved, questions)
+                ]
+            state["questions"] = questions
 
             state["outcome"], reply = _message_outcome(
-                llm_error, unsupported, unresolved, state["questions"]
+                llm_error, unsupported, unresolved, state["questions"],
+                grain=grain,
             )
             state["messages"].append({"role": "assistant", "text": reply})
             try:
@@ -211,21 +257,32 @@ class WorkflowService:
                 continue
         raise Conflict(CONCURRENT_UPDATE_MESSAGE)
 
+    def _extract_offline(self, text: str) -> dict:
+        if self.catalog.model().get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+            from smart_librarian.domain.public_financials import (
+                parse_financial_message,
+            )
+            return parse_financial_message(
+                text, self.catalog.choices(), self.catalog
+            )
+        if self.domain_id == "public_sales":
+            from smart_librarian.domain.public_annual import (
+                parse_public_message,
+            )
+            return parse_public_message(
+                text, self.catalog.choices(), self.catalog
+            )
+        return parser.parse_message(text, self.catalog.choices(), self.catalog)
+
     def _extract_message(self, messages: list[dict], text: str,
                          use_llm: bool) -> tuple[dict, str, str | None]:
         """Choose provider vs offline extraction; returns (extraction, mode, error)."""
         if not use_llm:
-            return (
-                parser.parse_message(text, self.catalog.choices(), self.catalog),
-                "offline",
-                None,
-            )
+            return self._extract_offline(text), "offline", None
         try:
             return self._extract_llm(messages), "llm", None
         except LLMUnavailable as exc:
-            extraction = parser.parse_message(
-                text, self.catalog.choices(), self.catalog
-            )
+            extraction = self._extract_offline(text)
             return extraction, "offline_fallback_after_llm_unavailable", str(exc)
 
     def _extract_llm(self, messages: list[dict]) -> dict:
@@ -471,7 +528,30 @@ class WorkflowService:
         if decision._gaps(self.catalog, self.catalog.model(), intent):
             raise Conflict("Catalog governance evidence no longer satisfied.")
         try:
-            if self.domain_id in CONTRACTS:
+            if self.catalog.model().get("model_id") == "PUBLIC-MODEL-FINANCIALS":
+                from smart_librarian.reporting.public_financials import (
+                    compute_public_financials,
+                )
+                result = compute_public_financials(
+                    self.catalog.public_evidence,
+                    product_ids=intent["product_ids"],
+                    market_ids=intent["market_ids"],
+                    months=intent["months"],
+                    metric_ids=intent["metric_ids"],
+                    grain=intent["grain"],
+                )
+            elif self.domain_id == "public_sales":
+                from smart_librarian.reporting.public_annual import (
+                    compute_public_annual,
+                )
+                result = compute_public_annual(
+                    self.catalog.public_evidence,
+                    product_ids=intent["product_ids"],
+                    market_ids=intent["market_ids"],
+                    months=intent["months"],
+                    metric_ids=intent["metric_ids"],
+                )
+            elif self.domain_id in CONTRACTS:
                 result = compute_operational(
                     self.catalog.db_path,
                     domain_id=self.domain_id,
