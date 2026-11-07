@@ -61,12 +61,18 @@ def _build_client(provider):
     except ImportError as exc:
         raise LLMUnavailable("openai package is not installed.") from exc
     try:
-        return OpenAI(
-            api_key=api_key,
-            base_url=provider.base_url,
-            timeout=provider.timeout_seconds,
-            max_retries=_REQUEST_MAX_RETRIES,
-        )
+        kwargs = {
+            "api_key": api_key,
+            "base_url": provider.base_url,
+            "timeout": provider.timeout_seconds,
+            "max_retries": _REQUEST_MAX_RETRIES,
+        }
+        if provider.provider == "snowflake":
+            kwargs["default_headers"] = {
+                "X-Snowflake-Authorization-Token-Type":
+                    "PROGRAMMATIC_ACCESS_TOKEN",
+            }
+        return OpenAI(**kwargs)
     except Exception as exc:  # sanitized: provider error class only
         raise LLMUnavailable(
             f"provider request failed ({type(exc).__name__})"
@@ -75,9 +81,14 @@ def _build_client(provider):
 
 def _request_extraction(client, provider, model: str, payload: dict) -> object:
     """Provider call plus strict JSON parse; sanitized failures."""
+    # Snowflake Cortex renamed the parameter; never send both spellings.
+    token_limit_key = (
+        "max_completion_tokens" if provider.provider == "snowflake"
+        else "max_tokens"
+    )
     kwargs = {
         "model": model,
-        "max_tokens": provider.max_tokens,
+        token_limit_key: provider.max_tokens,
         "messages": [
             {"role": "system", "content": _system_prompt()},
             {"role": "user", "content": json.dumps(payload)},
@@ -129,9 +140,9 @@ class OpenAIIntentExtractor:
         try:
             provider = resolve_provider()
         except ProviderConfigurationError as exc:
-            raise LLMUnavailable(
-                "Invalid LLM_PROVIDER (expected 'openai' or 'aitta')."
-            ) from exc
+            # Resolution messages are authored to be sanitized - they never
+            # contain environment values - so surface them directly.
+            raise LLMUnavailable(str(exc)) from exc
         client = _build_client(provider)
         payload = {
             "conversation": conversation,

@@ -79,10 +79,14 @@ AITTA_API_TOKEN=<your-token>
 ```
 
 For OpenAI instead set `LLM_PROVIDER=openai`, `LLM_MODEL=gpt-4.1-mini`
-and `OPENAI_API_KEY`; use only the matching provider credential. See
+and `OPENAI_API_KEY`; use only the matching provider credential.
+Snowflake Cortex is also supported
+(`LLM_PROVIDER=snowflake` + `SNOWFLAKE_ACCOUNT_HOST` + `SNOWFLAKE_PAT`;
+OpenAI-compatible REST, PAT auth) — see
+[docs/SNOWFLAKE_SETUP.md](docs/SNOWFLAKE_SETUP.md). See
 [docs/AITTA_SETUP.md](docs/AITTA_SETUP.md) for Aitta access. The app and
 any Power BI project run locally, but LLM inference is a **remote** call
-to Aitta (or OpenAI when selected) - it needs internet and a valid
+to the selected provider (Aitta, OpenAI, Featherless, or Snowflake) - it needs internet and a valid
 credential. The opt-in is the
 "Send request text + catalog metadata to the LLM" checkbox on the
 challenge Builder page; the request text and catalog metadata (no source

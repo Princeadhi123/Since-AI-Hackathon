@@ -29,7 +29,8 @@ for research and development use - do not send sensitive or personal data.
 
 ## Configure
 
-Create a local `.env` (git-ignored - `.env.example` is only a template):
+Create a local, git-ignored `.env`, or merge the keys below into your
+existing file. Process env always wins; `.env.example` is only a template:
 
 ```
 LLM_PROVIDER=aitta
@@ -45,9 +46,17 @@ LLM_MODEL=openai/gpt-oss-120b
 - `GET /api/capabilities` reports provider label, model, timeout and the
   credential env var *name* - never the secret value.
 
-## Alternatives mentioned at the event (not implemented)
+## Alternatives mentioned at the event
 
-For completeness only - none of these are wired in and no accounts/coupons
-are claimed here: Featherless (limited-time event credit), n8n (event team
-offer), Google AI Studio (free tier). This project integrates Aitta for the
-event; the existing OpenAI adapter remains as an alternative provider.
+This project integrates Aitta for the event; the OpenAI adapter remains as
+an alternative provider. **Featherless AI** (the event's $25 credit offer,
+OpenAI-compatible endpoint hosting open-weight models) is also wired in:
+`LLM_PROVIDER=featherless`, `FEATHERLESS_API_KEY`, plus `LLM_MODEL` set to
+a model id from the Featherless catalog. Claim the credit via official
+participant channels; do not commit the key. **Snowflake Cortex** is
+also wired in (`LLM_PROVIDER=snowflake` + `SNOWFLAKE_ACCOUNT_HOST` +
+`SNOWFLAKE_PAT`, PAT auth on the OpenAI-compatible REST endpoint) - see
+`docs/SNOWFLAKE_SETUP.md`.
+
+Other event offers are not wired in and no accounts/coupons are claimed
+here: n8n (event team offer), Google AI Studio (free tier).

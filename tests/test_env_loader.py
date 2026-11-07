@@ -21,7 +21,9 @@ class EnvLoaderTests(unittest.TestCase):
         self.path = Path(self.temp.name) / ".env"
         self.env_patch = mock.patch.dict(os.environ, {}, clear=False)
         self.env_patch.start()
-        for key in ("OPENAI_API_KEY", "AITTA_API_TOKEN", "LLM_PROVIDER",
+        for key in ("OPENAI_API_KEY", "AITTA_API_TOKEN",
+                    "FEATHERLESS_API_KEY", "SNOWFLAKE_ACCOUNT_HOST",
+                    "SNOWFLAKE_PAT", "LLM_PROVIDER",
                     "LLM_MODEL", "DEMO_DATA_DIR", "RUNTIME_DB_PATH"):
             os.environ.pop(key, None)
         # Point the default .env lookup at the empty temp dir so a real
@@ -110,6 +112,33 @@ class EnvLoaderTests(unittest.TestCase):
         status = provider_status()
         self.assertFalse(status["configured"])
         self.assertIn("model", status)
+
+    def test_snowflake_keys_loaded_and_process_env_wins(self):
+        self.write(
+            "LLM_PROVIDER=snowflake\n"
+            "SNOWFLAKE_ACCOUNT_HOST=myorg-myacct.snowflakecomputing.com\n"
+            f"SNOWFLAKE_PAT={SECRET}\n"
+        )
+        loaded = load_dotenv(self.path)
+        self.assertIn("SNOWFLAKE_ACCOUNT_HOST", loaded)
+        self.assertIn("SNOWFLAKE_PAT", loaded)
+        self.assertNotIn(SECRET, str(loaded))
+        status = provider_status()
+        self.assertEqual(status["provider"], "snowflake")
+        self.assertTrue(status["configured"])
+        self.assertNotIn(SECRET, str(status))
+        # Process env wins over the file.
+        os.environ["SNOWFLAKE_ACCOUNT_HOST"] = (
+            "otherorg-otheracct.snowflakecomputing.com"
+        )
+        self.write(
+            "SNOWFLAKE_ACCOUNT_HOST=myorg-myacct.snowflakecomputing.com\n"
+        )
+        load_dotenv(self.path)
+        self.assertEqual(
+            os.environ["SNOWFLAKE_ACCOUNT_HOST"],
+            "otherorg-otheracct.snowflakecomputing.com",
+        )
 
 
 if __name__ == "__main__":

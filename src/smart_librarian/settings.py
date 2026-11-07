@@ -9,8 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Only these keys may be set from a .env file. Anything else is ignored so a
 # stray file cannot inject unrelated environment variables.
 _DOTENV_ALLOWED_KEYS = frozenset(
-    {"OPENAI_API_KEY", "AITTA_API_TOKEN", "LLM_PROVIDER", "LLM_MODEL",
-     "DEMO_DATA_DIR", "RUNTIME_DB_PATH"}
+    {"OPENAI_API_KEY", "AITTA_API_TOKEN", "FEATHERLESS_API_KEY",
+     "SNOWFLAKE_ACCOUNT_HOST", "SNOWFLAKE_PAT",
+     "LLM_PROVIDER", "LLM_MODEL", "DEMO_DATA_DIR", "RUNTIME_DB_PATH"}
 )
 
 
@@ -120,7 +121,8 @@ def provider_status() -> dict:
     load_dotenv()
     try:
         provider = resolve_provider()
-    except ProviderConfigurationError:
+    except ProviderConfigurationError as exc:
+        # Resolution messages are authored sanitized - never user values.
         return {
             "configured": False,
             "provider": None,
@@ -128,7 +130,7 @@ def provider_status() -> dict:
             "model": _resolve_model(),
             "timeout_seconds": None,
             "credential_env": None,
-            "error": "Invalid LLM_PROVIDER (expected 'openai' or 'aitta').",
+            "error": str(exc),
         }
     return {
         "configured": provider.configured,
