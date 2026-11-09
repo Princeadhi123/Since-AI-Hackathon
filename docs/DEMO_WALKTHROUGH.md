@@ -1,4 +1,4 @@
-# Smart Librarian: your demo, one step at a time
+# Smart Librarian — Live Demo
 
 Every slide answers: what do I do, what should I see, and what does it prove?
 Start with Setup, then Commercial, Supply, Market Access, Launch, and the extra checks.

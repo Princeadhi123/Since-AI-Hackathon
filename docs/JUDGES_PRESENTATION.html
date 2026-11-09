@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Librarian — Judge Presentation</title>
+<style>
+:root{
+  --ivory:#f8f2e7; --paper:#fdfaf3; --navy:#17233f; --navy-soft:#2c3a5e;
+  --teal:#0f766e; --teal-soft:#d7ebe8; --coral:#e76f51;
+  --coral-soft:#fbdfd4; --ink:#232323; --muted:#5c6577; --line:#e3d9c6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;background:#10182e;color:var(--ink);
+  font-family:"Trebuchet MS","Segoe UI",Arial,sans-serif;}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:700;
+  color:var(--navy);letter-spacing:.2px;}
+#deck{height:calc(100vh - 48px);width:100vw;overflow:hidden;position:relative;}
+.slide{position:absolute;width:1280px;height:720px;left:50%;top:50%;
+  display:none;overflow:hidden;background:var(--paper);
+  transform:translate(-50%,-50%) scale(var(--scale,1));
+  transform-origin:center center;
+  padding:54px 72px 64px;border-top:6px solid var(--accent,#17233f);}
+.slide.active{display:flex;flex-direction:column;animation:fadein .25s ease;}
+@media (prefers-reduced-motion:reduce){.slide.active{animation:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.slide.dark{background:linear-gradient(135deg,var(--navy) 0%,#1e3050 60%,var(--teal) 140%);
+  color:var(--ivory);border-top-color:var(--coral);}
+.slide.dark h1,.slide.dark h2{color:var(--ivory);}
+.kicker{color:var(--accent,#0f766e);text-transform:uppercase;
+  letter-spacing:.22em;font-size:15px;font-weight:700;margin:0 0 10px;}
+.slide.dark .kicker{color:#9fd4cd;}
+h2.title{font-size:44px;line-height:1.12;margin:0 0 26px;}
+.slide.dark h2.title{color:var(--ivory);}
+.ft{position:absolute;left:72px;right:72px;bottom:20px;display:flex;
+  justify-content:space-between;align-items:center;
+  font-size:15px;color:var(--muted);
+  border-top:1px solid var(--line);padding-top:10px;}
+.slide.dark .ft{color:#9fb0d0;border-top-color:rgba(255,255,255,.18);}
+.ft .pg{font-variant-numeric:tabular-nums;}
+.badge-apx{display:inline-block;background:var(--coral);color:#fff;
+  font-size:11px;font-weight:700;letter-spacing:.14em;border-radius:4px;
+  padding:2px 8px;margin-left:10px;vertical-align:middle;}
+.flowrow{display:flex;align-items:stretch;gap:14px;margin:8px 0;}
+.fnode{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:18px 16px;font-size:22px;font-weight:700;color:var(--navy);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  box-shadow:0 1px 4px rgba(23,35,63,.06);}
+.fnode.teal{background:var(--teal);color:#fff;border-color:var(--teal);}
+.fnode.navy{background:var(--navy);color:var(--ivory);border-color:var(--navy);}
+.farr{align-self:center;color:var(--coral);font-size:30px;font-weight:700;}
+.pains{display:flex;gap:14px;margin-top:22px;}
+.pain{flex:1;background:var(--coral-soft);border-left:5px solid var(--coral);
+  border-radius:10px;padding:16px 18px;font-size:21px;color:var(--navy);}
+.takeaway{margin-top:auto;background:var(--navy);color:var(--ivory);
+  border-radius:12px;padding:20px 26px;font-size:24px;
+  font-family:Georgia,serif;}
+.pillarrow{display:flex;gap:18px;margin-top:14px;}
+.pillar{flex:1;background:#fff;border:1px solid var(--line);
+  border-top:5px solid var(--teal);border-radius:12px;padding:26px 22px;
+  font-size:26px;font-weight:700;color:var(--navy);line-height:1.25;
+  box-shadow:0 1px 4px rgba(23,35,63,.06);}
+.pillar .num{display:block;font-family:Georgia,serif;font-size:15px;
+  color:var(--teal);font-weight:700;letter-spacing:.14em;margin-bottom:12px;}
+.support{margin-top:auto;background:var(--teal-soft);
+  border-left:5px solid var(--teal);border-radius:10px;
+  padding:18px 24px;font-size:22px;color:var(--navy);}
+.cols{display:flex;gap:22px;flex:1;}
+.col{flex:1;border-radius:14px;padding:26px 30px;}
+.col h3{margin:0 0 16px;font-size:17px;letter-spacing:.12em;
+  text-transform:uppercase;font-family:"Trebuchet MS";}
+.col.ai{background:var(--teal-soft);border:1px solid #b8d8d3;}
+.col.ai h3{color:var(--teal);}
+.col.gov{background:var(--navy);color:var(--ivory);}
+.col.gov h3{color:#9fd4cd;}
+.col ul{margin:0;padding-left:22px;font-size:26px;line-height:1.7;}
+.col.gov ul{color:var(--ivory);}
+.quote{font-family:Georgia,serif;font-size:34px;line-height:1.3;
+  color:var(--navy);border-left:6px solid var(--coral);
+  padding:6px 0 6px 26px;margin:4px 0 26px;max-width:1050px;}
+.badge{display:inline-block;background:var(--teal);color:#fff;border-radius:999px;
+  padding:8px 22px;font-size:18px;font-weight:700;margin-top:18px;}
+.bigreuse{font-family:Georgia,serif;font-size:120px;font-weight:700;
+  color:var(--teal);line-height:1;margin:2px 0 8px;letter-spacing:.04em;}
+.resupport{font-size:24px;color:var(--navy);margin-bottom:20px;}
+.contrast{display:flex;gap:16px;}
+.contrast div{flex:1;background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:14px 18px;font-size:21px;color:var(--ink);}
+.contrast b{color:var(--coral);}
+.pages{display:flex;gap:18px;margin-top:24px;flex:1;}
+.page{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:0;overflow:hidden;box-shadow:0 1px 4px rgba(23,35,63,.08);}
+.page .bar{background:var(--navy-soft);color:#dfe5f2;font-size:14px;
+  padding:8px 14px;letter-spacing:.08em;text-transform:uppercase;}
+.page .body{padding:20px 16px;font-size:24px;font-weight:700;
+  color:var(--navy);font-family:Georgia,serif;}
+.doms{display:flex;gap:16px;flex:1;margin-top:8px;}
+.dom{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+  border-top:5px solid var(--teal);padding:22px 18px;
+  box-shadow:0 1px 4px rgba(23,35,63,.06);}
+.dom h3{margin:0 0 6px;font-size:26px;color:var(--navy);}
+.dom .grain{display:inline-block;background:var(--teal-soft);color:var(--teal);
+  font-size:15px;font-weight:700;border-radius:999px;padding:3px 12px;
+  margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em;}
+.dom .fields{font-size:20px;color:var(--ink);line-height:1.35;}
+.estrow{display:flex;gap:16px;margin-top:6px;}
+.estcard{flex:1;background:#fff;border:1px solid var(--line);
+  border-left:5px solid var(--teal);border-radius:10px;
+  padding:18px 20px;font-size:23px;font-weight:700;color:var(--navy);}
+.estrip{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
+.estrip span{background:var(--teal-soft);color:var(--navy);border-radius:999px;
+  padding:7px 18px;font-size:18px;font-weight:700;}
+.status{margin-top:auto;background:var(--coral);color:#fff;border-radius:10px;
+  padding:16px 24px;font-size:24px;font-weight:700;font-family:Georgia,serif;
+  text-align:center;}
+.tiles{display:flex;gap:20px;flex:1;}
+.tile{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+  border-top:5px solid var(--teal);padding:24px 26px;
+  box-shadow:0 1px 4px rgba(23,35,63,.06);}
+.tile h3{margin:0 0 12px;font-size:22px;color:var(--teal);
+  font-family:"Trebuchet MS";}
+.tile p{font-size:22px;line-height:1.4;color:var(--ink);margin:0;}
+.distinct{margin-top:20px;background:var(--coral-soft);
+  border-left:5px solid var(--coral);border-radius:10px;
+  padding:16px 22px;font-size:21px;color:var(--navy);}
+.rmcols{display:flex;gap:22px;flex:1;}
+.rmcol{flex:1;border-radius:14px;padding:24px 30px;}
+.rmcol.now{background:var(--teal-soft);border:1px solid #b8d8d3;}
+.rmcol.next{background:#fff;border:2px dashed var(--navy-soft);}
+.rmcol h3{margin:0 0 14px;font-size:17px;letter-spacing:.12em;
+  text-transform:uppercase;font-family:"Trebuchet MS";}
+.rmcol.now h3{color:var(--teal);}
+.rmcol.next h3{color:var(--navy-soft);}
+.rmcol ul{margin:0;padding-left:22px;font-size:24px;line-height:1.75;}
+.anchors{display:flex;gap:18px;margin-top:34px;}
+.anchor{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);
+  border-radius:12px;padding:22px 20px;font-size:24px;font-weight:700;
+  color:var(--ivory);text-align:center;}
+.qual{margin-top:22px;font-size:17px;color:#9fb0d0;font-style:italic;}
+.close{margin-top:auto;font-family:Georgia,serif;font-size:30px;
+  color:#9fd4cd;font-weight:700;}
+.archwrap{flex:1;display:flex;flex-direction:column;gap:14px;}
+.src{background:var(--teal-soft);border:1px solid #b8d8d3;border-radius:10px;
+  padding:12px 20px;font-size:19px;font-weight:700;color:var(--teal);
+  text-align:center;}
+.archmid{display:flex;gap:14px;align-items:stretch;}
+.archbox{flex:1;background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:16px;font-size:22px;font-weight:700;
+  color:var(--navy);display:flex;align-items:center;justify-content:center;
+  text-align:center;}
+.branch{background:#fff;border:2px dashed var(--teal);border-radius:10px;
+  padding:12px 20px;font-size:20px;color:var(--teal);font-weight:700;
+  text-align:center;}
+.spine{background:var(--navy);border-radius:12px;padding:16px 22px;}
+.spine .flowrow{margin:0;}
+.spine .fnode{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);
+  color:var(--ivory);font-size:19px;padding:14px 12px;}
+.spine .farr{color:var(--coral);}
+.qa{display:flex;flex-direction:column;gap:14px;flex:1;
+  justify-content:center;}
+.qa .pair{background:#fff;border:1px solid var(--line);border-radius:10px;
+  border-left:5px solid var(--teal);padding:14px 22px;}
+.qa .q{font-size:21px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.qa .a{font-size:20px;color:var(--ink);}
+#controls{position:fixed;bottom:0;left:0;right:0;display:flex;gap:.4rem;
+  align-items:center;justify-content:center;padding:.45rem .6rem;z-index:40;
+  background:rgba(23,35,63,.92);backdrop-filter:blur(4px);}
+#controls button{font-family:inherit;font-size:.85rem;border:none;
+  border-radius:8px;padding:.45em .9em;cursor:pointer;
+  background:var(--teal);color:#fff;}
+#controls button:hover{background:#0c5f59;}
+#controls button.sec{background:transparent;color:#cfd8ea;
+  border:1px solid #46557a;}
+#controls button.sec:hover{background:var(--navy-soft);}
+#counter{color:#cfd8ea;font-size:.82rem;min-width:6em;text-align:center;}
+#progress{position:fixed;bottom:0;left:0;height:4px;background:var(--coral);
+  z-index:41;transition:width .2s;}
+@page{size:13.333in 7.5in;margin:0;}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  #controls,#progress{display:none;}
+  html,body{background:var(--paper);}
+  #deck{height:auto;overflow:visible;}
+  .slide{position:static;display:flex;transform:none;left:auto;top:auto;
+    width:13.333in;height:7.5in;page-break-after:always;
+    padding:.55in .75in .65in;animation:none;}
+}
+</style>
+</head>
+<body>
+<div id="deck">
+<section class="slide dark" data-apx="0" data-title="Build less. Trust what remains."><div style="flex:1;display:flex;flex-direction:column;justify-content:center;"><p class="kicker">SINCE AI 2026 · BAYER CHALLENGE</p><h2 class="title" style="font-size:64px;margin:0 0 18px;">Build less.<br>Trust what remains.</h2><p style="font-size:22px;color:#9fd4cd;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin:0 0 14px;">Smart Librarian</p><p style="font-size:26px;color:#dfe5f2;max-width:22em;margin:0;line-height:1.35;">From a business question to a governed report — without creating the next duplicate.</p></div><div class="ft"><span>Working prototype · Official synthetic builder pack · Not Bayer business data</span><span class="pg">1 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="AI can accelerate the wrong thing."><p class="kicker">THE PROBLEM</p><h2 class="title">AI can accelerate the wrong thing.</h2><div class="flowrow"><div class="fnode ">More requests</div><span class="farr">&#8594;</span><div class="fnode ">More dashboards</div><span class="farr">&#8594;</span><div class="fnode ">More duplicated logic</div></div><div class="pains"><div class="pain">Which KPI is right?</div><div class="pain">Who owns this?</div><div class="pain">Can we safely retire it?</div></div><div class="takeaway">During a Tableau-to-Power BI migration, creation alone is not the win.</div></section>
+<section class="slide" data-apx="0" data-title="Reuse before you create."><p class="kicker">OUR RESPONSE</p><h2 class="title">Reuse before you create.</h2><div class="pillarrow"><div class="pillar"><span class="num">01</span>Reuse exact approved scope</div><div class="pillar"><span class="num">02</span>Make ownership explicit</div><div class="pillar"><span class="num">03</span>Keep evidence with the output</div></div><div class="support">AI proposes intent. People confirm responsibility. Deterministic checks govern the result.</div></section>
+<section class="slide" data-apx="0" data-title="Let AI interpret. Never let it silently decide."><p class="kicker">MEANINGFUL AI, BOUNDED AUTHORITY</p><h2 class="title">Let AI interpret. Never let it silently decide.</h2><div class="cols"><div class="col ai"><h3>LLM proposes</h3><ul><li>Products</li><li>markets</li><li>fields</li><li>periods</li></ul></div><div class="col gov"><h3>Governed workflow controls</h3><ul><li>Validate choices</li><li>confirm scope</li><li>choose owner</li><li>separate approval</li></ul></div></div><div class="ft"><span>Snowflake Cortex for opt-in extraction. No LLM-calculated business values.</span><span class="pg">4 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="One question. An accountable answer."><p class="kicker">LIVE DEMO</p><h2 class="title">One question. An accountable answer.</h2><p class="quote">“Show monthly Nubeqa net sales and sales forecast in Germany for January through March 2026.”</p><div class="flowrow"><div class="fnode navy">Ask</div><span class="farr">&#8594;</span><div class="fnode navy">Confirm scope + owner</div><span class="farr">&#8594;</span><div class="fnode navy">Create plan</div><span class="farr">&#8594;</span><div class="fnode navy">Separate approval</div><span class="farr">&#8594;</span><div class="fnode navy">Freeze report</div><span class="farr">&#8594;</span><div class="fnode navy">Export</div></div><div><span class="badge">Commercial · Nubeqa · Germany · Jan–Mar 2026</span></div><div class="ft"><span>Synthetic source data · Explicit owner: OWN-001</span><span class="pg">5 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="The second request should not create a second report."><p class="kicker">THE REVEAL</p><h2 class="title">The second request should not create a second report.</h2><div class="bigreuse">REUSE</div><div class="resupport">Same confirmed scope + same owner + same source fingerprint → existing approved plan</div><div class="contrast"><div>Reorder the same fields <b>→ same plan</b></div><div>Remove a field <b>→ different scope</b></div></div><div class="ft"><span>Wording is not identity. The normalized specification is.</span><span class="pg">6 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="The report travels. Its evidence travels with it."><p class="kicker">POWER BI HANDOFF</p><h2 class="title">The report travels. Its evidence travels with it.</h2><div class="flowrow"><div class="fnode teal">PBIP ZIP</div><span class="farr">&#8594;</span><div class="fnode teal">Extract fully</div><span class="farr">&#8594;</span><div class="fnode teal">Open GovernedReport.pbip</div><span class="farr">&#8594;</span><div class="fnode teal">Refresh</div></div><div class="pages"><div class="page"><div class="bar">Report page 1</div><div class="body">Dashboard</div></div><div class="page"><div class="bar">Report page 2</div><div class="body">Source Evidence</div></div><div class="page"><div class="bar">Report page 3</div><div class="body">Ownership &amp; Evidence</div></div></div><div class="ft"><span>Packaged frozen snapshot — not a live Snowflake connection.</span><span class="pg">7 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="Different questions. The same discipline."><p class="kicker">ONE CONTROL PATTERN, FOUR DOMAINS</p><h2 class="title">Different questions. The same discipline.</h2><div class="doms"><div class="dom"><h3>Commercial</h3><span class="grain">Monthly</span><div class="fields">Net sales + forecast</div></div><div class="dom"><h3>Supply</h3><span class="grain">Snapshot</span><div class="fields">OTIF + inventory + risk</div></div><div class="dom"><h3>Market Access</h3><span class="grain">Snapshot</span><div class="fields">Coverage + reimbursement</div></div><div class="dom"><h3>Launch</h3><span class="grain">Events</span><div class="fields">Milestones + status</div></div></div><div class="ft"><span>Native units. Source-backed rows. No invented time trends or readiness scores.</span><span class="pg">8 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="An analytics estate needs an exit strategy."><p class="kicker">BEYOND CREATION</p><h2 class="title">An analytics estate needs an exit strategy.</h2><div class="estrow"><div class="estcard">Review reuse candidates</div><div class="estcard">Propose migration</div><div class="estcard">Propose consolidation or retirement</div></div><div class="estrip"><span>Owner</span><span>KPI catalog</span><span>Usage</span><span>Dependencies</span><span>Governance signals</span></div><div class="status">Approved proposal ≠ executed change</div><div class="ft"><span>Candidate similarity is context, not certified report equivalence.</span><span class="pg">9 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="A working prototype. Clear evidence boundaries."><p class="kicker">PROOF, NOT PROMISE</p><h2 class="title">A working prototype. Clear evidence boundaries.</h2><div class="tiles"><div class="tile"><h3>Prior local end-to-end checks</h3><p>Four-domain approval, frozen render, exports, REUSE and Power BI page checks.</p></div><div class="tile"><h3>Separate Snowflake checks</h3><p>Four-domain live intent extraction verified on 7 November 2026.</p></div></div><div class="distinct">The complete end-to-end checks used an earlier provider. A complete Snowflake end-to-end pass is not claimed by those checks.</div><div class="ft"><span>Today’s live demo is evidence only for the steps actually shown.</span><span class="pg">10 / 14</span></div></section>
+<section class="slide" data-apx="0" data-title="Scale the control plane, not the dashboard count."><p class="kicker">PATH TO ENTERPRISE</p><h2 class="title">Scale the control plane, not the dashboard count.</h2><div class="rmcols"><div class="rmcol now"><h3>Working locally</h3><ul><li>Confirmed specifications</li><li>persisted plans</li><li>frozen exports</li><li>audit events</li></ul></div><div class="rmcol next"><h3>Next integrations</h3><ul><li>Enterprise identity</li><li>managed registry</li><li>approved BI deployment</li><li>certified semantic bindings</li></ul></div></div><div class="ft"><span>Prototype limits: simulated authorization; no production lifecycle execution or Power BI service publishing.</span><span class="pg">11 / 14</span></div></section>
+<section class="slide dark" data-apx="0" data-title="The best new dashboard might be the one we never create."><h2 class="title" style="font-size:52px;margin:0;">The best new dashboard<br>might be the one we never create.</h2><div class="anchors"><div class="anchor">Fewer duplicates</div><div class="anchor">Explicit ownership</div><div class="anchor">Evidence that stays attached</div></div><p class="qual">The intended business outcome — not a measured impact claim.</p><p class="close">Build less. Build better. Govern by design.</p></section>
+<section class="slide" data-apx="1" data-title="A thin AI layer. An explicit governance spine."><p class="kicker">APPENDIX · ARCHITECTURE <span class="badge-apx">APPENDIX</span></p><h2 class="title">A thin AI layer. An explicit governance spine.</h2><div class="archwrap"><div class="src">Read-only synthetic workbook · fingerprint-pinned</div><div class="archmid"><div class="archbox">Streamlit UI</div><span class="farr">&#8594;</span><div class="archbox">FastAPI workflow</div></div><div class="branch">Opt-in Snowflake Cortex → validated intent</div><div class="spine"><div class="flowrow"><div class="fnode ">Confirmed spec</div><span class="farr">&#8594;</span><div class="fnode ">SQLite plans + audit</div><span class="farr">&#8594;</span><div class="fnode ">frozen report</div><span class="farr">&#8594;</span><div class="fnode ">HTML / CSV / ZIP / Power Query / PBIP</div></div></div></div><div class="ft"><span>The LLM interprets metadata choices; report values come from source rows.</span><span class="pg">13 / 14</span></div></section>
+<section class="slide" data-apx="1" data-title="Where we draw the line."><p class="kicker">APPENDIX · JUDGE Q&amp;A <span class="badge-apx">APPENDIX</span></p><h2 class="title">Where we draw the line.</h2><div class="qa"><div class="pair"><div class="q">Does REUSE prove two dashboards are equivalent?</div><div class="a">No. It matches confirmed scope, owner and source fingerprint.</div></div><div class="pair"><div class="q">Are KPI definitions certified executable logic?</div><div class="a">No. Catalog context is distinct from semantic bindings.</div></div><div class="pair"><div class="q">Can AI approve or calculate the report?</div><div class="a">No. Separate simulated approval; deterministic source-row rendering.</div></div><div class="pair"><div class="q">Does a successful export prove Desktop works?</div><div class="a">No. Open, Refresh and inspect all three pages.</div></div></div></section>
+</div>
+<div id="controls" role="toolbar" aria-label="Slide controls">
+  <button id="prevBtn">&#8592; Prev</button>
+  <span id="counter">1 / 14</span>
+  <button id="nextBtn">Next &#8594;</button>
+  <button class="sec" id="fsBtn" title="Fullscreen">&#9974; Full</button>
+  <button class="sec" id="printBtn">Print</button>
+</div>
+<div id="progress"></div>
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var n = slides.length, cur = 0;
+  var counter = document.getElementById('counter');
+  var prog = document.getElementById('progress');
+  function fit(){
+    var s = Math.min(window.innerWidth/1280, (window.innerHeight-48)/720);
+    document.documentElement.style.setProperty('--scale', s);
+  }
+  window.addEventListener('resize', fit); fit();
+  function label(i){
+    var apx = slides[i].dataset.apx === '1';
+    return apx ? ('Appendix ' + (i+1) + ' / ' + n) : ((i+1) + ' / ' + n);
+  }
+  function go(i){
+    cur = Math.max(0, Math.min(n-1, i));
+    slides.forEach(function(s,j){s.classList.toggle('active', j===cur);});
+    counter.textContent = label(cur);
+    prog.style.width = ((cur+1)/n*100)+'%';
+    if (history.replaceState) history.replaceState(null,'','#slide-'+(cur+1));
+  }
+  function hashSlide(){
+    var m = (location.hash||'').match(/^#slide-(\d+)$/);
+    return m ? Number.parseInt(m[1],10)-1 : null;
+  }
+  window.addEventListener('hashchange',function(){
+    var i = hashSlide();
+    if(i !== null && i !== cur) go(i);
+  });
+  document.getElementById('nextBtn').addEventListener('click',function(){go(cur+1);});
+  document.getElementById('prevBtn').addEventListener('click',function(){go(cur-1);});
+  document.getElementById('printBtn').addEventListener('click',function(){window.print();});
+  document.getElementById('fsBtn').addEventListener('click',function(){
+    try{
+      if(!document.fullscreenElement){
+        var p = document.documentElement.requestFullscreen &&
+                document.documentElement.requestFullscreen();
+        if(p && p.catch) p.catch(function(){});
+      } else { document.exitFullscreen(); }
+    }catch(e){}
+  });
+  document.addEventListener('keydown',function(e){
+    var t = e.target;
+    if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||
+        t.tagName==='BUTTON'||t.tagName==='A'||t.isContentEditable)) return;
+    var sel = window.getSelection && window.getSelection();
+    if(sel && String(sel).length) return;
+    if(e.ctrlKey||e.metaKey||e.altKey) return;
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(cur+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1);}
+    else if(e.key==='Home'){e.preventDefault();go(0);}
+    else if(e.key==='End'){e.preventDefault();go(n-1);}
+  });
+  var start = hashSlide();
+  go(start === null ? 0 : start);
+})();
+</script>
+</body>
+</html>

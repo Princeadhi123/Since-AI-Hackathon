@@ -359,7 +359,7 @@ def _cover_html(intro):
         '<div class="slide-inner">'
         '<p class="kicker">Smart Librarian</p>'
         '<h1 style="font-size:clamp(2.1rem,4.8vw,3.6rem);margin:.15em 0;">'
-        'Your demo, one step at a time</h1>'
+        'Smart Librarian \u2014 Live Demo</h1>'
         f'<p style="font-size:1.02rem;max-width:46em;">{md(" ".join(intro))}</p>'
         '<div class="q3">'
         '<div><b>What to do</b>The exact clicks and commands</div>'
@@ -446,7 +446,7 @@ def render_html(intro, sections):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Smart Librarian - Your demo, one step at a time</title>
+<title>Smart Librarian \u2014 Live Demo</title>
 <style>{CSS}</style>
 </head>
 <body>
@@ -569,7 +569,7 @@ def _pptx_cover(prs, intro, total):
     add_textbox(slide, Inches(0.8), Inches(0.5), Inches(11.7), Inches(0.45),
                 "SMART LIBRARIAN", 14, hx("#9fd4cd"), bold=True)
     add_textbox(slide, Inches(0.8), Inches(1.0), Inches(11.7), Inches(1.0),
-                "Your demo, one step at a time", 40, IVORY, bold=True,
+                "Smart Librarian \u2014 Live Demo", 40, IVORY, bold=True,
                 font=FONT_DISPLAY)
     tb = slide.shapes.add_textbox(Inches(0.8), Inches(1.95), Inches(11.6),
                                   Inches(1.3))
